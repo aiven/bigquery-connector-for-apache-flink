@@ -35,7 +35,7 @@ CREATE TEMPORARY TABLE simple_example (
     'connector' = 'bigquery',
     'service-account' = <PATH_TO_SERVICE_ACCOUNT>,
     'project-id' = 'MyProject',
-    'dataset' = 'MyDataset'',
+    'dataset' = 'MyDataset',
     'table' = 'MyTable'
 );
 ```
