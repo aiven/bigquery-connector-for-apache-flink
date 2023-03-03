@@ -1,0 +1,1 @@
+io.aiven.flink.connectors.bigquery.sink.BigQueryTableSinkFactory
