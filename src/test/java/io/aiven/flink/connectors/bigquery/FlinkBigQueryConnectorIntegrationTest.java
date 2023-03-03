@@ -22,9 +22,7 @@ public class FlinkBigQueryConnectorIntegrationTest {
       ENV_PROP_MAP.get("BIG_QUERY_SERVICE_ACCOUNT");
   private static final String BIG_QUERY_PROJECT_ID = ENV_PROP_MAP.get("BIG_QUERY_PROJECT_ID");
 
-  // Enable once workload identity provider is configured
-  // more details at https://cloud.google.com/blog/products/identity-security/enabling-keyless-authentication-from-github-actions
-  // @Test
+  @Test
   public void testSinkForDifferentTypes() throws Exception {
 
     StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
