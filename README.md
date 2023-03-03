@@ -21,6 +21,8 @@ mvnw clean verify -DskipTests
 To build with tests it is required to define `BIG_QUERY_SERVICE_ACCOUNT`, `BIG_QUERY_PROJECT_ID` env variables.
 `BIG_QUERY_SERVICE_ACCOUNT` contains address to service account to use.
 `BIG_QUERY_PROJECT_ID` contains a Google Cloud project id.
+Before running tests corresponding dataset and table should be present. 
+`io.aiven.flink.connectors.bigquery.PrepareForTests` could be used to create them.
 
 ## Example
 As a prerequisite there should exist a Google cloud project with name `MyProject` containing `MyDataset` with table `MyTable`.
@@ -32,9 +34,9 @@ CREATE TEMPORARY TABLE simple_example (
 ) WITH (
     'connector' = 'bigquery',
     'service-account' = <PATH_TO_SERVICE_ACCOUNT>,
-    `project-id` = `MyProject`,
-    `dataset` = `MyDataset`,
-    `table` = `MyTable`
+    'project-id' = 'MyProject',
+    'dataset' = 'MyDataset'',
+    'table' = 'MyTable'
 );
 ```
 
@@ -53,9 +55,9 @@ CREATE TEMPORARY TABLE array_row_example (
 ) WITH (
     'connector' = 'bigquery',
     'service-account' = <PATH_TO_SERVICE_ACCOUNT>,
-    `project-id` = `MyProject`,
-    `dataset` = `MyDataset`,
-    `table` = `MyTable`
+    'project-id' = 'MyProject',
+    'dataset' = 'MyDataset',
+    'table' = 'MyTable'
 );
 ```
 
