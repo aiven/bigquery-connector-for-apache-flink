@@ -68,7 +68,6 @@ public class BigQueryStreamingOutputFormat extends AbstractBigQueryOutputFormat 
         final Object value = retrieveValue(record, fieldTypes[i], i);
         rowContent.put(fieldNames[i], value);
       }
-      bigQuery.getTable(TableId.of("aiven-opensource-sandbox", "TestDataSet", "strTest"));
       InsertAllRequest.Builder builder = InsertAllRequest.newBuilder(options.getTableId());
       builder.addRow(rowContent);
       Map<Long, List<BigQueryError>> insertErrors =
