@@ -1,5 +1,6 @@
 package io.aiven.flink.connectors.bigquery.sink;
 
+import com.google.cloud.bigquery.Table;
 import java.util.Arrays;
 import org.apache.flink.api.common.io.RichOutputFormat;
 import org.apache.flink.configuration.Configuration;
@@ -35,6 +36,8 @@ public abstract class AbstractBigQueryOutputFormat extends RichOutputFormat<RowD
 
     private BigQueryConnectionOptions options;
 
+    private Table table;
+
     public Builder() {}
 
     public Builder withFieldDataTypes(DataType[] fieldDataTypes) {
@@ -52,6 +55,11 @@ public abstract class AbstractBigQueryOutputFormat extends RichOutputFormat<RowD
       return this;
     }
 
+    public Builder withTable(Table table) {
+      this.table = table;
+      return this;
+    }
+
     public AbstractBigQueryOutputFormat build() {
       Preconditions.checkNotNull(fieldNames);
       Preconditions.checkNotNull(fieldDataTypes);
@@ -61,7 +69,7 @@ public abstract class AbstractBigQueryOutputFormat extends RichOutputFormat<RowD
     }
 
     private BigQueryStreamingOutputFormat createBatchOutputFormat(LogicalType[] logicalTypes) {
-      return new BigQueryStreamingOutputFormat(fieldNames, logicalTypes, options);
+      return new BigQueryStreamingOutputFormat(fieldNames, logicalTypes, options, table);
     }
   }
 }

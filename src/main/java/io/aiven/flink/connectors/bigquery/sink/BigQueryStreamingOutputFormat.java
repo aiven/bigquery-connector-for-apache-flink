@@ -11,6 +11,7 @@ import com.google.api.core.ApiFutures;
 import com.google.api.gax.core.FixedCredentialsProvider;
 import com.google.api.gax.core.FixedExecutorProvider;
 import com.google.cloud.bigquery.BigQueryException;
+import com.google.cloud.bigquery.Table;
 import com.google.cloud.bigquery.storage.v1.*;
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.MoreExecutors;
@@ -69,13 +70,17 @@ public class BigQueryStreamingOutputFormat extends AbstractBigQueryOutputFormat 
 
   private final BigQueryConnectionOptions options;
 
+  private Table table;
+
   protected BigQueryStreamingOutputFormat(
       @Nonnull String[] fieldNames,
       @Nonnull LogicalType[] fieldTypes,
-      @Nonnull BigQueryConnectionOptions options) {
+      @Nonnull BigQueryConnectionOptions options,
+      Table table) {
     this.fieldNames = Preconditions.checkNotNull(fieldNames);
     this.fieldTypes = Preconditions.checkNotNull(fieldTypes);
     this.options = Preconditions.checkNotNull(options);
+    this.table = table;
   }
 
   @Override
