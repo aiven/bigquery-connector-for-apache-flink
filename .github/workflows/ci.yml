@@ -26,8 +26,19 @@ jobs:
       - name: Build with Maven
         run: mvn -B package -DskipTests --file pom.xml
   test:
-    image: maven:3.8-openjdk-11
-    stage: test
-    script:
-      - pwd
-      - mvn test
+    strategy:
+      matrix:
+        java-version: [ 11 ]
+        runs-on: [ ubuntu-latest, macos-latest, windows-latest ]
+    name: Test on ${{ matrix.runs-on }} with jdk ${{ matrix.java-version }}
+    runs-on: ${{ matrix.runs-on }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up JDK ${{ matrix.java-version }}
+        uses: actions/setup-java@v2
+        with:
+          java-version: ${{ matrix.java-version }}
+          distribution: 'temurin'
+          cache: maven
+      - name: Build with Maven
+        run: mvn test
