@@ -8,7 +8,7 @@
 | 1.16.x       | 1.0.0-1.16                          | TBD          |
 
 To start using BigQuery connector for Flink put `flink-bigquery-connector-<version>.jar`
-to `lib/` folder of Flink and restart Flink.
+to `lib/` folder of Apache Flink® and restart Apache Flink®.
 
 ## Build locally
 ```bash
