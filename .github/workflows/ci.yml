@@ -40,5 +40,5 @@ jobs:
           java-version: ${{ matrix.java-version }}
           distribution: 'temurin'
           cache: maven
-      - name: Build with Maven
+      - name: test with Maven
         run: mvn test
