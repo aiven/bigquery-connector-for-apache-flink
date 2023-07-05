@@ -25,3 +25,9 @@ jobs:
           cache: maven
       - name: Build with Maven
         run: mvn -B package -DskipTests --file pom.xml
+  test:
+    image: maven:3.8-openjdk-11
+    stage: test
+    script:
+      - pwd
+      - mvn test
