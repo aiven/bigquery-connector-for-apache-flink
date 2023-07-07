@@ -84,5 +84,5 @@ CREATE TEMPORARY TABLE array_row_example (
 ```
 If dataset `MyDataset` does not exist connector will create it, same for table `MyTable`
 It is worth to mention that Flink's for `ARRAY` type it will create `REPEATED` field in BigQuery,
-for Flink's `ROW` type it will create `STRUCT` type in BigQuery. also depending on nullability specified in schema 
+for Flink's `ROW` type it will create `STRUCT` type in BigQuery. Also depending on nullability specified in schema 
 it will create `REQUIRED` or `NULLABLE` type in BigQuery.
