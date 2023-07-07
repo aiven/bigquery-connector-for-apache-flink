@@ -54,9 +54,9 @@ public class BigQueryStreamingOutputFormat extends AbstractBigQueryOutputFormat 
           Status.Code.UNAVAILABLE);
 
   // Track the number of in-flight requests to wait for all responses before shutting down.
-  transient private Phaser inflightRequestCount ;
+  private transient Phaser inflightRequestCount;
   private final Serializable lock = new Serializable() {};
-  transient private JsonStreamWriter streamWriter;
+  private transient JsonStreamWriter streamWriter;
 
   @GuardedBy("lock")
   private RuntimeException error = null;
@@ -135,7 +135,9 @@ public class BigQueryStreamingOutputFormat extends AbstractBigQueryOutputFormat 
       arr.put(rowContent);
 
       append(new AppendContext(arr, 0));
-    } catch (BigQueryException | Descriptors.DescriptorValidationException | InterruptedException e) {
+    } catch (BigQueryException
+        | Descriptors.DescriptorValidationException
+        | InterruptedException e) {
       throw new IOException(e);
     }
   }
