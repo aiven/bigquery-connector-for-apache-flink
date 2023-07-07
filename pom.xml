@@ -13,7 +13,7 @@
         <assertj.core.version>3.24.2</assertj.core.version>
         <error_prone_core.version>2.20.0</error_prone_core.version>
         <flink.version>1.16.2</flink.version>
-        <google-cloud-bigquery.version>2.29.0</google-cloud-bigquery.version>
+        <google-cloud-libraries.version>26.18.0</google-cloud-libraries.version>
         <java.version>11</java.version>
         <junit.version>5.9.3</junit.version>
         <googleJavaFormat.version>1.14.0</googleJavaFormat.version>
@@ -30,11 +30,22 @@
         <spotless-maven-plugin.version>2.37.0</spotless-maven-plugin.version>
     </properties>
 
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.google.cloud</groupId>
+                <artifactId>libraries-bom</artifactId>
+                <version>${google-cloud-libraries.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
         <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-bigquery</artifactId>
-            <version>${google-cloud-bigquery.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.flink</groupId>
