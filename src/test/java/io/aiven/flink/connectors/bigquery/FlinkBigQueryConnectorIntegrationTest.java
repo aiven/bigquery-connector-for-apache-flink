@@ -13,6 +13,7 @@ import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 import org.apache.flink.table.catalog.Column;
 import org.apache.flink.table.catalog.ResolvedSchema;
 import org.apache.flink.types.Row;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 public class FlinkBigQueryConnectorIntegrationTest {
@@ -23,6 +24,7 @@ public class FlinkBigQueryConnectorIntegrationTest {
   private static final String BIG_QUERY_PROJECT_ID = ENV_PROP_MAP.get("BIG_QUERY_PROJECT_ID");
 
   @Test
+  @Disabled("Disabled until we figure out account login for CI")
   public void testSinkForDifferentTypes() throws Exception {
 
     StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
