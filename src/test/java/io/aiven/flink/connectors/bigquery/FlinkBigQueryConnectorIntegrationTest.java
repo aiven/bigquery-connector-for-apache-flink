@@ -24,7 +24,6 @@ public class FlinkBigQueryConnectorIntegrationTest {
   private static final String BIG_QUERY_PROJECT_ID = ENV_PROP_MAP.get("BIG_QUERY_PROJECT_ID");
 
   @Test
-  @Disabled("Disabled until we figure out account login for CI")
   public void testSinkForDifferentTypes() throws Exception {
 
     StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
