@@ -8,7 +8,7 @@ public class BigQueryConfigOptions {
       ConfigOptions.key("service-account")
           .stringType()
           .noDefaultValue()
-          .withDescription("The pass to service account key.");
+          .withDescription("The path to service account key.");
   public static final ConfigOption<String> PROJECT_ID =
       ConfigOptions.key("project-id")
           .stringType()
