@@ -1,5 +1,6 @@
 package io.aiven.flink.connectors.bigquery.sink;
 
+import static io.aiven.flink.connectors.bigquery.sink.BigQueryConfigOptions.CREATE_TABLE_IF_NOT_PRESENT;
 import static io.aiven.flink.connectors.bigquery.sink.BigQueryConfigOptions.DATASET;
 import static io.aiven.flink.connectors.bigquery.sink.BigQueryConfigOptions.PROJECT_ID;
 import static io.aiven.flink.connectors.bigquery.sink.BigQueryConfigOptions.SERVICE_ACCOUNT;
@@ -18,7 +19,7 @@ import org.apache.flink.table.factories.FactoryUtil;
 
 public class BigQueryTableSinkFactory implements DynamicTableSinkFactory {
   private static final Set<ConfigOption<?>> REQUIRED_OPTIONS =
-      Set.of(SERVICE_ACCOUNT, PROJECT_ID, DATASET, TABLE);
+      Set.of(SERVICE_ACCOUNT, PROJECT_ID, DATASET, TABLE, CREATE_TABLE_IF_NOT_PRESENT);
 
   @Override
   public DynamicTableSink createDynamicTableSink(Context context) {
@@ -35,6 +36,7 @@ public class BigQueryTableSinkFactory implements DynamicTableSinkFactory {
             helper.getOptions().get(PROJECT_ID),
             helper.getOptions().get(DATASET),
             helper.getOptions().get(TABLE),
+            helper.getOptions().get(CREATE_TABLE_IF_NOT_PRESENT),
             credentials);
     return new BigQuerySink(
         context.getCatalogTable(), context.getCatalogTable().getResolvedSchema(), options);

@@ -64,3 +64,25 @@ CREATE TEMPORARY TABLE array_row_example (
 ```sql
 INSERT INTO array_row_example VALUES(array[1, 2, 3], row('fullname', 123));
 ```
+
+## Table autocreation
+Connector could create datasets and tables in BigQuery based on schema in case there is enough grants for that.
+To enable this feature use `'table-create-if-not-exists'='true'` property (`false` by default)
+For instance
+```sql
+CREATE TEMPORARY TABLE array_row_example (
+    `numbers` ARRAY<INT>,
+    `persons` ROW<name STRING, age INT>
+) WITH (
+    'connector' = 'bigquery',
+    'service-account' = <PATH_TO_SERVICE_ACCOUNT>,
+    'project-id' = 'MyProject',
+    'dataset' = 'MyDataset',
+    'table' = 'MyTable',
+    'table-create-if-not-exists'='true'
+);
+```
+If dataset `MyDataset` does not exist connector will create it, same for table `MyTable`
+It is worth to mention that Flink's for `ARRAY` type it will create `REPEATED` field in BigQuery,
+for Flink's `ROW` type it will create `STRUCT` type in BigQuery. Also depending on nullability specified in schema 
+it will create `REQUIRED` or `NULLABLE` type in BigQuery.

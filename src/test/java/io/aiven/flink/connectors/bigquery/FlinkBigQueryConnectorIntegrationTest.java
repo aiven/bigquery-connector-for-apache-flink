@@ -81,6 +81,7 @@ public class FlinkBigQueryConnectorIntegrationTest {
                 + BIG_QUERY_PROJECT_ID
                 + "',"
                 + "  'dataset' = 'TestDataSet',"
+                + "  'table-create-if-not-exists' = 'true',"
                 + "  'table' = 'test-table'"
                 + ")")
         .await();
