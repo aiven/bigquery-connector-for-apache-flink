@@ -41,4 +41,4 @@ jobs:
           distribution: 'temurin'
           cache: maven
       - name: test with Maven
-        run: mvn test -Dtest=\!FlinkBigQueryConnectorIntegrationTest
+        run: mvn test -Dtest=!FlinkBigQueryConnectorIntegrationTest
