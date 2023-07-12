@@ -107,11 +107,17 @@ public class BigQueryStreamingOutputFormat extends AbstractBigQueryOutputFormat 
 
   @Override
   public void close() {
-    // Wait for all in-flight requests to complete.
-    inflightRequestCount.arriveAndAwaitAdvance();
+    // An error could happen before init of inflightRequestCount
+    if (inflightRequestCount != null) {
+      // Wait for all in-flight requests to complete.
+      inflightRequestCount.arriveAndAwaitAdvance();
+    }
 
-    // Close the connection to the server.
-    streamWriter.close();
+    // streamWriter could fail to init
+    if (streamWriter != null) {
+      // Close the connection to the server.
+      streamWriter.close();
+    }
 
     // Verify that no error occurred in the stream.
     synchronized (this.lock) {
