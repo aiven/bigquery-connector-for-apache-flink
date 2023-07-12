@@ -178,8 +178,8 @@ public class BigQuerySink implements DynamicTableSink {
     }
     Field.Builder fBuilder;
     if (logicalType.is(LogicalTypeRoot.ROW)
-        || logicalType.is(LogicalTypeRoot.ARRAY)
-            && logicalType.getChildren().get(0).is(LogicalTypeRoot.ROW)) {
+        || (logicalType.is(LogicalTypeRoot.ARRAY)
+            && logicalType.getChildren().get(0).is(LogicalTypeRoot.ROW))) {
       fBuilder = Field.newBuilder(fieldName, standardSQLTypeName, buildFieldList(logicalType));
     } else {
       fBuilder = Field.newBuilder(fieldName, standardSQLTypeName);

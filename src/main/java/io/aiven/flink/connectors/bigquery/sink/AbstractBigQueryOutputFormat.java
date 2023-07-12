@@ -1,6 +1,5 @@
 package io.aiven.flink.connectors.bigquery.sink;
 
-import com.google.cloud.bigquery.Table;
 import java.util.Arrays;
 import org.apache.flink.api.common.io.RichOutputFormat;
 import org.apache.flink.configuration.Configuration;
@@ -8,15 +7,11 @@ import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.logical.LogicalType;
 import org.apache.flink.util.Preconditions;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** Abstract class of BigQuery output format. */
 public abstract class AbstractBigQueryOutputFormat extends RichOutputFormat<RowData> {
 
   private static final long serialVersionUID = 1L;
-
-  private static final Logger LOG = LoggerFactory.getLogger(AbstractBigQueryOutputFormat.class);
 
   public AbstractBigQueryOutputFormat() {}
 
@@ -24,19 +19,15 @@ public abstract class AbstractBigQueryOutputFormat extends RichOutputFormat<RowD
   public void configure(Configuration parameters) {}
 
   @Override
-  public synchronized void close() {}
+  public void close() {}
 
   public static class Builder {
-
-    private static final Logger LOG = LoggerFactory.getLogger(Builder.class);
 
     private DataType[] fieldDataTypes;
 
     private String[] fieldNames;
 
     private BigQueryConnectionOptions options;
-
-    private Table table;
 
     public Builder() {}
 
@@ -55,11 +46,6 @@ public abstract class AbstractBigQueryOutputFormat extends RichOutputFormat<RowD
       return this;
     }
 
-    public Builder withTable(Table table) {
-      this.table = table;
-      return this;
-    }
-
     public AbstractBigQueryOutputFormat build() {
       Preconditions.checkNotNull(fieldNames);
       Preconditions.checkNotNull(fieldDataTypes);
@@ -69,7 +55,7 @@ public abstract class AbstractBigQueryOutputFormat extends RichOutputFormat<RowD
     }
 
     private BigQueryStreamingOutputFormat createBatchOutputFormat(LogicalType[] logicalTypes) {
-      return new BigQueryStreamingOutputFormat(fieldNames, logicalTypes, options, table);
+      return new BigQueryStreamingOutputFormat(fieldNames, logicalTypes, options);
     }
   }
 }

@@ -11,7 +11,6 @@ import com.google.api.core.ApiFutures;
 import com.google.api.gax.core.FixedCredentialsProvider;
 import com.google.api.gax.core.FixedExecutorProvider;
 import com.google.cloud.bigquery.BigQueryException;
-import com.google.cloud.bigquery.Table;
 import com.google.cloud.bigquery.storage.v1.*;
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.MoreExecutors;
@@ -70,17 +69,13 @@ public class BigQueryStreamingOutputFormat extends AbstractBigQueryOutputFormat 
 
   private final BigQueryConnectionOptions options;
 
-  private Table table;
-
   protected BigQueryStreamingOutputFormat(
       @Nonnull String[] fieldNames,
       @Nonnull LogicalType[] fieldTypes,
-      @Nonnull BigQueryConnectionOptions options,
-      Table table) {
+      @Nonnull BigQueryConnectionOptions options) {
     this.fieldNames = Preconditions.checkNotNull(fieldNames);
     this.fieldTypes = Preconditions.checkNotNull(fieldTypes);
     this.options = Preconditions.checkNotNull(options);
-    this.table = table;
   }
 
   @Override
@@ -356,12 +351,14 @@ public class BigQueryStreamingOutputFormat extends AbstractBigQueryOutputFormat 
       this.appendContext = appendContext;
     }
 
+    @Override
     public void onSuccess(AppendRowsResponse response) {
       System.out.format("Append success\n");
       this.parent.recreateCount.set(0);
       done();
     }
 
+    @Override
     public void onFailure(Throwable throwable) {
       // If the wrapped exception is a StatusRuntimeException, check the state of the operation.
       // If the state is INTERNAL, CANCELLED, or ABORTED, you can retry. For more information,
