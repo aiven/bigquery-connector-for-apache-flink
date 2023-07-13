@@ -356,6 +356,9 @@
                                     <shadedPattern>io.aiven.flink.connectors.bigquery.shaded.org.threeten</shadedPattern>
                                 </relocation>
                             </relocations>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                            </transformers>
                             <filters>
                                 <filter>
                                     <artifact>*:*</artifact>
