@@ -300,12 +300,48 @@
                                     <shadedPattern>io.aiven.flink.connectors.bigquery.shaded.com.google</shadedPattern>
                                 </relocation>
                                 <relocation>
-                                    <pattern>google</pattern>
-                                    <shadedPattern>io.aiven.flink.connectors.bigquery.shaded.google</shadedPattern>
+                                    <pattern>google.api</pattern>
+                                    <shadedPattern>io.aiven.flink.connectors.bigquery.shaded.google.api</shadedPattern>
                                 </relocation>
                                 <relocation>
-                                    <pattern>grpc</pattern>
-                                    <shadedPattern>io.aiven.flink.connectors.bigquery.shaded.grpc</shadedPattern>
+                                    <pattern>google.cloud</pattern>
+                                    <shadedPattern>io.aiven.flink.connectors.bigquery.shaded.google.cloud</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>google.geo.type</pattern>
+                                    <shadedPattern>io.aiven.flink.connectors.bigquery.shaded.google.geo.type</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>google.iam.v1</pattern>
+                                    <shadedPattern>io.aiven.flink.connectors.bigquery.shaded.google.iam.v1</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>google.logging.type</pattern>
+                                    <shadedPattern>io.aiven.flink.connectors.bigquery.shaded.google.logging.type</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>google.longrunning</pattern>
+                                    <shadedPattern>io.aiven.flink.connectors.bigquery.shaded.google.longrunning</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>google.protobuf</pattern>
+                                    <shadedPattern>io.aiven.flink.connectors.bigquery.shaded.google.protobuf</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>google.rpc</pattern>
+                                    <shadedPattern>io.aiven.flink.connectors.bigquery.shaded.google.rpc</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>google.type</pattern>
+                                    <shadedPattern>io.aiven.flink.connectors.bigquery.shaded.google.type</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>grpc.gcp</pattern>
+                                    <shadedPattern>io.aiven.flink.connectors.bigquery.shaded.grpc.gcp</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>grpc.lb.v1</pattern>
+                                    <shadedPattern>io.aiven.flink.connectors.bigquery.shaded.grpc.lb.v1</shadedPattern>
                                 </relocation>
                                 <relocation>
                                     <pattern>io.grpc</pattern>
@@ -332,10 +368,6 @@
                                     <shadedPattern>io.aiven.flink.connectors.bigquery.shaded.org.apache.arrow</shadedPattern>
                                 </relocation>
                                 <relocation>
-                                    <pattern>codegen</pattern>
-                                    <shadedPattern>io.aiven.flink.connectors.bigquery.shaded.codegen</shadedPattern>
-                                </relocation>
-                                <relocation>
                                     <pattern>org.apache.commons</pattern>
                                     <shadedPattern>io.aiven.flink.connectors.bigquery.shaded.org.apache.commons</shadedPattern>
                                 </relocation>
@@ -347,10 +379,12 @@
                                     <pattern>org.codehaus.mojo</pattern>
                                     <shadedPattern>io.aiven.flink.connectors.bigquery.shaded.org.codehaus.mojo</shadedPattern>
                                 </relocation>
-                                <relocation>
+                                <!--relocation>
+                                This leads to jvm crash
+                                at the same time it's not updated for long period of time, so it would be fair to assume that everyone relies on same version
                                     <pattern>org.conscrypt</pattern>
                                     <shadedPattern>io.aiven.flink.connectors.bigquery.shaded.org.conscrypt</shadedPattern>
-                                </relocation>
+                                </relocation-->
                                 <relocation>
                                     <pattern>org.threeten</pattern>
                                     <shadedPattern>io.aiven.flink.connectors.bigquery.shaded.org.threeten</shadedPattern>
