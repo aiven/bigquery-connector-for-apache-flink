@@ -12,6 +12,9 @@ public class BigQueryConnectionOptions implements Serializable {
   private final String project;
   private final String dataset;
   private final String table;
+  private final int batchSize;
+  private final int batchIntervalMs;
+  private final int maxRetries;
 
   private final boolean createIfNotExists;
 
@@ -20,10 +23,16 @@ public class BigQueryConnectionOptions implements Serializable {
       String dataset,
       String table,
       boolean createIfNotExists,
+      int batchSize,
+      int batchIntervalMs,
+      int maxRetries,
       Credentials credentials) {
     this.project = project;
     this.dataset = dataset;
     this.table = table;
+    this.batchSize = batchSize;
+    this.batchIntervalMs = batchIntervalMs;
+    this.maxRetries = maxRetries;
     this.createIfNotExists = createIfNotExists;
     this.credentials = credentials;
   }
@@ -38,5 +47,17 @@ public class BigQueryConnectionOptions implements Serializable {
 
   public boolean isCreateIfNotExists() {
     return createIfNotExists;
+  }
+
+  public int getBatchSize() {
+    return batchSize;
+  }
+
+  public int getBatchIntervalMs() {
+    return batchIntervalMs;
+  }
+
+  public int getMaxRetries() {
+    return maxRetries;
   }
 }

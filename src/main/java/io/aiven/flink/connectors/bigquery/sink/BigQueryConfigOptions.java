@@ -29,4 +29,13 @@ public class BigQueryConfigOptions {
           .booleanType()
           .defaultValue(Boolean.FALSE)
           .withDescription("Determines whether table should be created if not exists");
+
+  public static final ConfigOption<Integer> BATCH_SIZE =
+      ConfigOptions.key("batch-size").intType().defaultValue(200).withDescription("Batch size");
+
+  public static final ConfigOption<Integer> BATCH_INTERVAL_MS =
+      ConfigOptions.key("batch-interval-ms")
+          .intType()
+          .defaultValue(200)
+          .withDescription("Batch interval ms");
 }

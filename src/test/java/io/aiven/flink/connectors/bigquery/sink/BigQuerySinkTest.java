@@ -33,7 +33,7 @@ public class BigQuerySinkTest {
   void tableCreationTest(String tableName, String[] fieldNames, DataType[] fieldTypes) {
     BigQueryConnectionOptions options =
         new BigQueryConnectionOptions(
-            BIG_QUERY_PROJECT_ID, DATASET_NAME, tableName, true, CREDENTIALS);
+            BIG_QUERY_PROJECT_ID, DATASET_NAME, tableName, true, 10, 100, 5, CREDENTIALS);
     var table = BigQuerySink.ensureTableExists(fieldNames, fieldTypes, options);
     table.delete();
   }
