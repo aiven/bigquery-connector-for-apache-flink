@@ -1,10 +1,13 @@
 package io.aiven.flink.connectors.bigquery.sink;
 
+import static io.aiven.flink.connectors.bigquery.sink.BigQueryConfigOptions.BATCH_INTERVAL_MS;
+import static io.aiven.flink.connectors.bigquery.sink.BigQueryConfigOptions.BATCH_SIZE;
 import static io.aiven.flink.connectors.bigquery.sink.BigQueryConfigOptions.CREATE_TABLE_IF_NOT_PRESENT;
 import static io.aiven.flink.connectors.bigquery.sink.BigQueryConfigOptions.DATASET;
 import static io.aiven.flink.connectors.bigquery.sink.BigQueryConfigOptions.PROJECT_ID;
 import static io.aiven.flink.connectors.bigquery.sink.BigQueryConfigOptions.SERVICE_ACCOUNT;
 import static io.aiven.flink.connectors.bigquery.sink.BigQueryConfigOptions.TABLE;
+import static org.apache.flink.table.connector.source.lookup.LookupOptions.MAX_RETRIES;
 
 import com.google.auth.Credentials;
 import com.google.auth.oauth2.ServiceAccountCredentials;
@@ -19,7 +22,15 @@ import org.apache.flink.table.factories.FactoryUtil;
 
 public class BigQueryTableSinkFactory implements DynamicTableSinkFactory {
   private static final Set<ConfigOption<?>> REQUIRED_OPTIONS =
-      Set.of(SERVICE_ACCOUNT, PROJECT_ID, DATASET, TABLE, CREATE_TABLE_IF_NOT_PRESENT);
+      Set.of(
+          SERVICE_ACCOUNT,
+          PROJECT_ID,
+          DATASET,
+          TABLE,
+          CREATE_TABLE_IF_NOT_PRESENT,
+          BATCH_SIZE,
+          BATCH_INTERVAL_MS,
+          MAX_RETRIES);
 
   @Override
   public DynamicTableSink createDynamicTableSink(Context context) {
@@ -37,6 +48,9 @@ public class BigQueryTableSinkFactory implements DynamicTableSinkFactory {
             helper.getOptions().get(DATASET),
             helper.getOptions().get(TABLE),
             helper.getOptions().get(CREATE_TABLE_IF_NOT_PRESENT),
+            helper.getOptions().get(BATCH_SIZE),
+            helper.getOptions().get(BATCH_INTERVAL_MS),
+            helper.getOptions().get(MAX_RETRIES),
             credentials);
     return new BigQuerySink(
         context.getCatalogTable(), context.getCatalogTable().getResolvedSchema(), options);

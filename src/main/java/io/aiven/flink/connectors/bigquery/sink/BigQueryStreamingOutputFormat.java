@@ -11,7 +11,11 @@ import com.google.api.core.ApiFutures;
 import com.google.api.gax.core.FixedCredentialsProvider;
 import com.google.api.gax.core.FixedExecutorProvider;
 import com.google.cloud.bigquery.BigQueryException;
-import com.google.cloud.bigquery.storage.v1.*;
+import com.google.cloud.bigquery.storage.v1.AppendRowsResponse;
+import com.google.cloud.bigquery.storage.v1.BigQueryWriteClient;
+import com.google.cloud.bigquery.storage.v1.BigQueryWriteSettings;
+import com.google.cloud.bigquery.storage.v1.Exceptions;
+import com.google.cloud.bigquery.storage.v1.JsonStreamWriter;
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.protobuf.Descriptors;
@@ -21,10 +25,16 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Phaser;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.annotation.Nonnull;
 import javax.annotation.concurrent.GuardedBy;
@@ -35,6 +45,7 @@ import org.apache.flink.table.types.logical.LogicalType;
 import org.apache.flink.table.types.logical.RowType;
 import org.apache.flink.table.types.logical.utils.LogicalTypeChecks;
 import org.apache.flink.util.Preconditions;
+import org.apache.flink.util.concurrent.ExecutorThreadFactory;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -68,6 +79,14 @@ public class BigQueryStreamingOutputFormat extends AbstractBigQueryOutputFormat 
   private final LogicalType[] fieldTypes;
 
   private final BigQueryConnectionOptions options;
+  private transient volatile Exception flushException;
+  private transient volatile Deque<RowData>[] batchQueues;
+  private transient volatile AtomicInteger readIndex;
+  private transient ScheduledExecutorService scheduler;
+  private transient ScheduledFuture<?> scheduledFuture;
+  private transient volatile boolean closed;
+  private transient volatile boolean previousFlushWasSuccessful;
+  private transient volatile boolean safeToCancelScheduler;
 
   protected BigQueryStreamingOutputFormat(
       @Nonnull String[] fieldNames,
@@ -83,6 +102,11 @@ public class BigQueryStreamingOutputFormat extends AbstractBigQueryOutputFormat 
     try {
       FixedCredentialsProvider creds = FixedCredentialsProvider.create(options.getCredentials());
       inflightRequestCount = new Phaser(1);
+      batchQueues = new Deque[] {new ArrayDeque<>(), new ArrayDeque<>()};
+      readIndex = new AtomicInteger(0);
+      closed = false;
+      previousFlushWasSuccessful = true;
+      safeToCancelScheduler = false;
       streamWriter =
           JsonStreamWriter.newBuilder(
                   options.getTableName().toString(),
@@ -100,13 +124,85 @@ public class BigQueryStreamingOutputFormat extends AbstractBigQueryOutputFormat 
                       .build())
               .build();
 
+      if (options.getBatchIntervalMs() != 0 && options.getBatchSize() != 1) {
+        this.scheduler =
+            Executors.newScheduledThreadPool(
+                1, new ExecutorThreadFactory("bigquery-output-format"));
+        this.scheduledFuture =
+            this.scheduler.scheduleWithFixedDelay(
+                () -> {
+                  synchronized (BigQueryStreamingOutputFormat.this) {
+                    if (!closed && !batchQueues[readIndex.get()].isEmpty()) {
+                      try {
+                        flush();
+                      } catch (Exception e) {
+                        flushException = e;
+                      }
+                    }
+                    if (closed) {
+                      safeToCancelScheduler = true;
+                    }
+                  }
+                },
+                options.getBatchIntervalMs(),
+                options.getBatchIntervalMs(),
+                TimeUnit.MILLISECONDS);
+      }
+
     } catch (Descriptors.DescriptorValidationException | InterruptedException e) {
       throw new IOException(e);
     }
   }
 
+  private void checkFlushException() {
+    if (flushException != null) {
+      throw new RuntimeException("Writing records to BigQuery failed.", flushException);
+    }
+  }
+
+  public synchronized void flush() throws IOException {
+    checkFlushException();
+
+    for (int i = 0; i <= options.getMaxRetries(); i++) {
+      try {
+        attemptToFlush();
+        break;
+      } catch (Exception e) {
+        if (i >= options.getMaxRetries()) {
+          throw new IOException(e);
+        }
+        try {
+          Thread.sleep(1000L * i);
+        } catch (InterruptedException ex) {
+          Thread.currentThread().interrupt();
+          throw new IOException("unable to flush; interrupted while doing another attempt", e);
+        }
+      }
+    }
+  }
+
   @Override
   public void close() {
+    closed = true;
+    if (this.scheduledFuture != null) {
+      while (!safeToCancelScheduler) {
+        try {
+          Thread.sleep(100);
+        } catch (InterruptedException e) {
+          throw new RuntimeException(e);
+        }
+      }
+
+      scheduledFuture.cancel(false);
+      this.scheduler.shutdown();
+    }
+    if (!batchQueues[readIndex.get()].isEmpty()) {
+      try {
+        flush();
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
     // An error could happen before init of inflightRequestCount
     if (inflightRequestCount != null) {
       // Wait for all in-flight requests to complete.
@@ -127,24 +223,44 @@ public class BigQueryStreamingOutputFormat extends AbstractBigQueryOutputFormat 
     }
   }
 
-  @Override
-  public void writeRecord(RowData record) throws IOException {
+  private void attemptToFlush() throws IOException {
     try {
-      JSONObject rowContent = new JSONObject();
-      final int arity = record.getArity();
-      for (int i = 0; i < arity; i++) {
-        final Object value = retrieveValue(record, fieldTypes[i], i);
-        rowContent.put(fieldNames[i], value);
+      final int index = readIndex.get();
+      if (previousFlushWasSuccessful) {
+        readIndex.set(index == 0 ? 1 : 0);
       }
+      Iterator<RowData> iterator = batchQueues[index].iterator();
+      while (iterator.hasNext()) {
+        RowData record = iterator.next();
+        JSONObject rowContent = new JSONObject();
+        final int arity = record.getArity();
+        for (int i = 0; i < arity; i++) {
+          final Object value = retrieveValue(record, fieldTypes[i], i);
+          rowContent.put(fieldNames[i], value);
+        }
 
-      JSONArray arr = new JSONArray();
-      arr.put(rowContent);
+        JSONArray arr = new JSONArray();
+        arr.put(rowContent);
 
-      append(new AppendContext(arr, 0));
+        append(new AppendContext(arr, 0));
+        iterator.remove();
+      }
+      previousFlushWasSuccessful = true;
     } catch (BigQueryException
         | Descriptors.DescriptorValidationException
         | InterruptedException e) {
+      previousFlushWasSuccessful = false;
       throw new IOException(e);
+    }
+  }
+
+  @Override
+  public void writeRecord(RowData record) throws IOException {
+    batchQueues[readIndex.get()].add(record);
+
+    if (options.getBatchSize() > 0
+        && batchQueues[readIndex.get()].size() >= options.getBatchSize()) {
+      flush();
     }
   }
 

@@ -86,3 +86,10 @@ If dataset `MyDataset` does not exist connector will create it, same for table `
 It is worth to mention that Flink's for `ARRAY` type it will create `REPEATED` field in BigQuery,
 for Flink's `ROW` type it will create `STRUCT` type in BigQuery. Also depending on nullability specified in schema 
 it will create `REQUIRED` or `NULLABLE` type in BigQuery.
+
+## Multiple rows in same request
+
+Connector allows to configure sending of multiple rows in same requests.
+There are `batch-size` and `batch-interval-ms` config options for that. 
+`batch-size` contains max number of rows per group.
+`batch-interval-ms` contains max interval to gather rows into a group, after passing this interval of time the request will be sent even if the number of rows in it less than configured in `batch-size`. 
