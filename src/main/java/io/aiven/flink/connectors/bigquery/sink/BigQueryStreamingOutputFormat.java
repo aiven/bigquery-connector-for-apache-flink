@@ -1,21 +1,34 @@
 package io.aiven.flink.connectors.bigquery.sink;
 
-import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
-import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME;
-import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
-import static java.time.format.DateTimeFormatter.ISO_TIME;
-
 import com.google.api.core.ApiFuture;
 import com.google.api.core.ApiFutureCallback;
 import com.google.api.core.ApiFutures;
 import com.google.api.gax.core.FixedCredentialsProvider;
 import com.google.api.gax.core.FixedExecutorProvider;
 import com.google.cloud.bigquery.BigQueryException;
-import com.google.cloud.bigquery.storage.v1.*;
+import com.google.cloud.bigquery.storage.v1.AppendRowsResponse;
+import com.google.cloud.bigquery.storage.v1.BigQueryWriteClient;
+import com.google.cloud.bigquery.storage.v1.BigQueryWriteSettings;
+import com.google.cloud.bigquery.storage.v1.CreateWriteStreamRequest;
+import com.google.cloud.bigquery.storage.v1.Exceptions;
+import com.google.cloud.bigquery.storage.v1.JsonStreamWriter;
+import com.google.cloud.bigquery.storage.v1.WriteStream;
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.protobuf.Descriptors;
 import io.grpc.Status;
+import org.apache.flink.table.data.ArrayData;
+import org.apache.flink.table.data.RowData;
+import org.apache.flink.table.types.logical.ArrayType;
+import org.apache.flink.table.types.logical.LogicalType;
+import org.apache.flink.table.types.logical.RowType;
+import org.apache.flink.table.types.logical.utils.LogicalTypeChecks;
+import org.apache.flink.util.Preconditions;
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import javax.annotation.Nonnull;
+import javax.annotation.concurrent.GuardedBy;
 import java.io.IOException;
 import java.io.Serializable;
 import java.math.BigDecimal;
@@ -26,17 +39,11 @@ import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Phaser;
 import java.util.concurrent.atomic.AtomicInteger;
-import javax.annotation.Nonnull;
-import javax.annotation.concurrent.GuardedBy;
-import org.apache.flink.table.data.ArrayData;
-import org.apache.flink.table.data.RowData;
-import org.apache.flink.table.types.logical.ArrayType;
-import org.apache.flink.table.types.logical.LogicalType;
-import org.apache.flink.table.types.logical.RowType;
-import org.apache.flink.table.types.logical.utils.LogicalTypeChecks;
-import org.apache.flink.util.Preconditions;
-import org.json.JSONArray;
-import org.json.JSONObject;
+
+import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
+import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
+import static java.time.format.DateTimeFormatter.ISO_TIME;
 
 public class BigQueryStreamingOutputFormat extends AbstractBigQueryOutputFormat {
 
@@ -68,6 +75,7 @@ public class BigQueryStreamingOutputFormat extends AbstractBigQueryOutputFormat 
   private final LogicalType[] fieldTypes;
 
   private final BigQueryConnectionOptions options;
+  private transient BigQueryWriteClient client;
 
   protected BigQueryStreamingOutputFormat(
       @Nonnull String[] fieldNames,
@@ -83,11 +91,20 @@ public class BigQueryStreamingOutputFormat extends AbstractBigQueryOutputFormat 
     try {
       FixedCredentialsProvider creds = FixedCredentialsProvider.create(options.getCredentials());
       inflightRequestCount = new Phaser(1);
+      WriteStream stream = WriteStream.newBuilder().setType(WriteStream.Type.COMMITTED).build();
+
+      CreateWriteStreamRequest createWriteStreamRequest =
+          CreateWriteStreamRequest.newBuilder()
+              .setParent(options.getTableName().toString())
+              .setWriteStream(stream)
+              .build();
+      client =
+          BigQueryWriteClient.create(
+              BigQueryWriteSettings.newBuilder().setCredentialsProvider(creds).build());
+      WriteStream writeStream = client.createWriteStream(createWriteStreamRequest);
+
       streamWriter =
-          JsonStreamWriter.newBuilder(
-                  options.getTableName().toString(),
-                  BigQueryWriteClient.create(
-                      BigQueryWriteSettings.newBuilder().setCredentialsProvider(creds).build()))
+          JsonStreamWriter.newBuilder(writeStream.getName(), writeStream.getTableSchema(), client)
               .setCredentialsProvider(creds)
               .setExecutorProvider(
                   FixedExecutorProvider.create(Executors.newScheduledThreadPool(100)))
@@ -125,6 +142,8 @@ public class BigQueryStreamingOutputFormat extends AbstractBigQueryOutputFormat 
         throw this.error;
       }
     }
+    client.finalizeWriteStream(streamWriter.getStreamName());
+    client.close();
   }
 
   @Override
@@ -359,7 +378,6 @@ public class BigQueryStreamingOutputFormat extends AbstractBigQueryOutputFormat 
 
     @Override
     public void onSuccess(AppendRowsResponse response) {
-      System.out.format("Append success\n");
       this.parent.recreateCount.set(0);
       done();
     }
