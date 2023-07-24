@@ -141,8 +141,14 @@ public class BigQueryStreamingOutputFormat extends AbstractBigQueryOutputFormat 
         throw this.error;
       }
     }
-    client.finalizeWriteStream(streamWriter.getStreamName());
-    client.close();
+
+    if (client != null) {
+      try {
+        client.finalizeWriteStream(streamWriter.getStreamName());
+      } finally {
+        client.close();
+      }
+    }
   }
 
   @Override
