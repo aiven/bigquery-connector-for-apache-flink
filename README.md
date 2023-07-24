@@ -86,3 +86,15 @@ If dataset `MyDataset` does not exist connector will create it, same for table `
 It is worth to mention that Flink's for `ARRAY` type it will create `REPEATED` field in BigQuery,
 for Flink's `ROW` type it will create `STRUCT` type in BigQuery. Also depending on nullability specified in schema 
 it will create `REQUIRED` or `NULLABLE` type in BigQuery.
+
+## Delivery guarantees
+
+Currently, it provides 2 types of delivery guarantees: `EXACTLY_ONCE` and `AT_LEAST_ONCE`. The default is `AT_LEAST_ONCE`.
+To change current value of delivery guarantees use `delivery-guarantee` option like
+```
+...
+WITH (
+...
+'delivery-guarantee' = 'EXACTLY_ONCE',
+...
+```
