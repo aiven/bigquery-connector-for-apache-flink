@@ -29,4 +29,10 @@ public class BigQueryConfigOptions {
           .booleanType()
           .defaultValue(Boolean.FALSE)
           .withDescription("Determines whether table should be created if not exists");
+
+  public static final ConfigOption<DeliveryGuarantee> DELIVERY_GUARANTEE =
+      ConfigOptions.key("delivery-guarantee")
+          .enumType(DeliveryGuarantee.class)
+          .defaultValue(DeliveryGuarantee.AT_LEAST_ONCE)
+          .withDescription("Determines delivery guarantee");
 }

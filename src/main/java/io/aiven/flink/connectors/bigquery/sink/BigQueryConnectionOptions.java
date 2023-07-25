@@ -14,17 +14,20 @@ public class BigQueryConnectionOptions implements Serializable {
   private final String table;
 
   private final boolean createIfNotExists;
+  private final DeliveryGuarantee deliveryGuarantee;
 
   public BigQueryConnectionOptions(
       String project,
       String dataset,
       String table,
       boolean createIfNotExists,
+      DeliveryGuarantee deliveryGuarantee,
       Credentials credentials) {
     this.project = project;
     this.dataset = dataset;
     this.table = table;
     this.createIfNotExists = createIfNotExists;
+    this.deliveryGuarantee = deliveryGuarantee;
     this.credentials = credentials;
   }
 
@@ -38,5 +41,9 @@ public class BigQueryConnectionOptions implements Serializable {
 
   public boolean isCreateIfNotExists() {
     return createIfNotExists;
+  }
+
+  public DeliveryGuarantee getDeliveryGuarantee() {
+    return deliveryGuarantee;
   }
 }

@@ -31,11 +31,18 @@ public class BigQuerySinkTest {
   @ParameterizedTest
   @MethodSource("datatypeProvider")
   void tableCreationTest(String tableName, String[] fieldNames, DataType[] fieldTypes) {
-    BigQueryConnectionOptions options =
-        new BigQueryConnectionOptions(
-            BIG_QUERY_PROJECT_ID, DATASET_NAME, tableName, true, CREDENTIALS);
-    var table = BigQuerySink.ensureTableExists(fieldNames, fieldTypes, options);
-    table.delete();
+    for (DeliveryGuarantee dg : DeliveryGuarantee.values()) {
+      BigQueryConnectionOptions options =
+          new BigQueryConnectionOptions(
+              BIG_QUERY_PROJECT_ID,
+              DATASET_NAME,
+              tableName + "-" + dg.name(),
+              true,
+              dg,
+              CREDENTIALS);
+      var table = BigQuerySink.ensureTableExists(fieldNames, fieldTypes, options);
+      table.delete();
+    }
   }
 
   static Stream<Arguments> datatypeProvider() {
