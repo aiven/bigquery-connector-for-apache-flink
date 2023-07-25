@@ -85,7 +85,7 @@ public abstract class AbstractBigQueryOutputFormat extends RichOutputFormat<RowD
   }
 
   @Override
-  public void close() {
+  public void close() throws IOException {
     // An error could happen before init of inflightRequestCount
     if (inflightRequestCount != null) {
       // Wait for all in-flight requests to complete.
@@ -101,7 +101,7 @@ public abstract class AbstractBigQueryOutputFormat extends RichOutputFormat<RowD
     // Verify that no error occurred in the stream.
     synchronized (this.lock) {
       if (this.error != null) {
-        throw this.error;
+        throw new IOException(this.error);
       }
     }
 
@@ -132,10 +132,9 @@ public abstract class AbstractBigQueryOutputFormat extends RichOutputFormat<RowD
       append(arr);
     } catch (BigQueryException
         | Descriptors.DescriptorValidationException
-        | InterruptedException e) {
+        | InterruptedException
+        | ExecutionException e) {
       throw new IOException(e);
-    } catch (ExecutionException e) {
-      throw new RuntimeException(e);
     }
   }
 
