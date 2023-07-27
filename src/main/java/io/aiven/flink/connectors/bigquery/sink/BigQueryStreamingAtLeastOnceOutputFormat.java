@@ -22,8 +22,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import javax.annotation.Nonnull;
 import org.apache.flink.table.types.logical.LogicalType;
 import org.json.JSONArray;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class BigQueryStreamingAtLeastOnceOutputFormat extends AbstractBigQueryOutputFormat {
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(BigQueryStreamingAtLeastOnceOutputFormat.class);
   private static final int MAX_RETRY_COUNT = 3;
   private static final int MAX_RECREATE_COUNT = 3;
   private static final ImmutableList<Status.Code> RETRIABLE_ERROR_CODES =
@@ -88,7 +92,7 @@ public class BigQueryStreamingAtLeastOnceOutputFormat extends AbstractBigQueryOu
       }
       // If earlier appends have failed, we need to reset before continuing.
       if (this.error != null) {
-        throw this.error;
+        throw new IOException(this.error);
       }
     }
     // Append asynchronously for increased throughput.
@@ -146,7 +150,8 @@ public class BigQueryStreamingAtLeastOnceOutputFormat extends AbstractBigQueryOu
           return;
         } catch (Exception e) {
           // Fall through to return error.
-          System.out.format("Failed to retry append: %s\n", e);
+          LOGGER.error("Failed to retry append: ", e);
+          // we should throw exception only when all attempts are used
         }
       }
 
