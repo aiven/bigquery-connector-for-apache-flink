@@ -13,7 +13,7 @@
         <assertj.core.version>3.24.2</assertj.core.version>
         <error_prone_core.version>2.20.0</error_prone_core.version>
         <flink.version>1.16.2</flink.version>
-        <google-cloud-libraries.version>26.19.0</google-cloud-libraries.version>
+        <google-cloud-libraries.version>26.21.0</google-cloud-libraries.version>
         <java.version>11</java.version>
         <junit.version>5.10.0</junit.version>
         <googleJavaFormat.version>1.14.0</googleJavaFormat.version>

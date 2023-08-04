@@ -31,17 +31,20 @@ public class BigQuerySinkTest {
   @ParameterizedTest
   @MethodSource("datatypeProvider")
   void tableCreationTest(String tableName, String[] fieldNames, DataType[] fieldTypes) {
-    for (DeliveryGuarantee dg : DeliveryGuarantee.values()) {
-      BigQueryConnectionOptions options =
-          new BigQueryConnectionOptions(
-              BIG_QUERY_PROJECT_ID,
-              DATASET_NAME,
-              tableName + "-" + dg.name(),
-              true,
-              dg,
-              CREDENTIALS);
-      var table = BigQuerySink.ensureTableExists(fieldNames, fieldTypes, options);
-      table.delete();
+    for (Compression compression : Compression.values()) {
+      for (DeliveryGuarantee dg : DeliveryGuarantee.values()) {
+        BigQueryConnectionOptions options =
+            new BigQueryConnectionOptions(
+                BIG_QUERY_PROJECT_ID,
+                DATASET_NAME,
+                tableName + "-" + dg.name(),
+                true,
+                dg,
+                compression,
+                CREDENTIALS);
+        var table = BigQuerySink.ensureTableExists(fieldNames, fieldTypes, options);
+        table.delete();
+      }
     }
   }
 

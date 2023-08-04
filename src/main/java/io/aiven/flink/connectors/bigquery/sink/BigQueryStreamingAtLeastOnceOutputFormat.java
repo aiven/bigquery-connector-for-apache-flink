@@ -61,7 +61,12 @@ public class BigQueryStreamingAtLeastOnceOutputFormat extends AbstractBigQueryOu
             .build();
     WriteStream writeStream = client.createWriteStream(createWriteStreamRequest);
 
-    return JsonStreamWriter.newBuilder(writeStream.getName(), writeStream.getTableSchema(), client)
+    JsonStreamWriter.Builder builder =
+        JsonStreamWriter.newBuilder(writeStream.getName(), writeStream.getTableSchema(), client);
+    if (options.getCompression() != Compression.NO_COMPRESSION) {
+      builder = builder.setCompressorName(options.getCompression().getValue());
+    }
+    return builder
         .setExecutorProvider(FixedExecutorProvider.create(Executors.newScheduledThreadPool(100)))
         .setChannelProvider(
             BigQueryWriteSettings.defaultGrpcTransportProviderBuilder()

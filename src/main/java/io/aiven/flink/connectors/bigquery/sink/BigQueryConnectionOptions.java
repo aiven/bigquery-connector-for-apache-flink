@@ -16,12 +16,15 @@ public class BigQueryConnectionOptions implements Serializable {
   private final boolean createIfNotExists;
   private final DeliveryGuarantee deliveryGuarantee;
 
+  private final Compression compression;
+
   public BigQueryConnectionOptions(
       String project,
       String dataset,
       String table,
       boolean createIfNotExists,
       DeliveryGuarantee deliveryGuarantee,
+      Compression compression,
       Credentials credentials) {
     this.project = project;
     this.dataset = dataset;
@@ -29,6 +32,7 @@ public class BigQueryConnectionOptions implements Serializable {
     this.createIfNotExists = createIfNotExists;
     this.deliveryGuarantee = deliveryGuarantee;
     this.credentials = credentials;
+    this.compression = compression;
   }
 
   public TableName getTableName() {
@@ -45,5 +49,9 @@ public class BigQueryConnectionOptions implements Serializable {
 
   public DeliveryGuarantee getDeliveryGuarantee() {
     return deliveryGuarantee;
+  }
+
+  public Compression getCompression() {
+    return compression;
   }
 }

@@ -98,3 +98,16 @@ WITH (
 'delivery-guarantee' = 'EXACTLY_ONCE',
 ...
 ```
+
+## Compression
+With https://github.com/googleapis/java-bigquerystorage/pull/2197 it's possible to enable compression over gRPC
+In connector it could be done as
+```
+...
+WITH (
+...
+'compression' = 'GZIP',
+...
+```
+By default, there is no compression, so far only `GZIP` compression is available.
+Please note that while it will reduce the network usage, it will increase CPU usage, thus please verify the trade off per use case.

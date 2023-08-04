@@ -35,4 +35,10 @@ public class BigQueryConfigOptions {
           .enumType(DeliveryGuarantee.class)
           .defaultValue(DeliveryGuarantee.AT_LEAST_ONCE)
           .withDescription("Determines delivery guarantee");
+
+  public static final ConfigOption<Compression> COMPRESSION =
+      ConfigOptions.key("compression")
+          .enumType(Compression.class)
+          .defaultValue(Compression.NO_COMPRESSION)
+          .withDescription("Sets the compression type for data transferring to BigQuery streams");
 }

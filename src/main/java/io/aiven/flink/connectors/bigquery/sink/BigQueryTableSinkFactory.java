@@ -1,5 +1,6 @@
 package io.aiven.flink.connectors.bigquery.sink;
 
+import static io.aiven.flink.connectors.bigquery.sink.BigQueryConfigOptions.COMPRESSION;
 import static io.aiven.flink.connectors.bigquery.sink.BigQueryConfigOptions.CREATE_TABLE_IF_NOT_PRESENT;
 import static io.aiven.flink.connectors.bigquery.sink.BigQueryConfigOptions.DATASET;
 import static io.aiven.flink.connectors.bigquery.sink.BigQueryConfigOptions.DELIVERY_GUARANTEE;
@@ -27,7 +28,8 @@ public class BigQueryTableSinkFactory implements DynamicTableSinkFactory {
           DATASET,
           TABLE,
           CREATE_TABLE_IF_NOT_PRESENT,
-          DELIVERY_GUARANTEE);
+          DELIVERY_GUARANTEE,
+          COMPRESSION);
 
   @Override
   public DynamicTableSink createDynamicTableSink(Context context) {
@@ -47,6 +49,7 @@ public class BigQueryTableSinkFactory implements DynamicTableSinkFactory {
             config.get(TABLE),
             config.get(CREATE_TABLE_IF_NOT_PRESENT),
             config.get(DELIVERY_GUARANTEE),
+            config.get(COMPRESSION),
             credentials);
     return new BigQuerySink(
         context.getCatalogTable(), context.getCatalogTable().getResolvedSchema(), options);
