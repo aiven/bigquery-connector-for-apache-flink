@@ -15,7 +15,6 @@ import com.google.protobuf.Descriptors;
 import java.io.IOException;
 import java.io.Serializable;
 import java.math.BigDecimal;
-import java.rmi.RemoteException;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Arrays;
