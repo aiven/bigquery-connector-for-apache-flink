@@ -3,6 +3,7 @@ package io.aiven.flink.connectors.bigquery.sink;
 import com.google.auth.Credentials;
 import com.google.cloud.bigquery.storage.v1.TableName;
 import java.io.Serializable;
+import org.apache.flink.connector.base.DeliveryGuarantee;
 
 public class BigQueryConnectionOptions implements Serializable {
 

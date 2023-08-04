@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Map;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.table.api.ApiExpression;
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 import org.apache.flink.table.catalog.Column;
@@ -91,24 +92,24 @@ public class FlinkBigQueryConnectorIntegrationTest {
     // null};
     BigDecimal[] decimalArray = new BigDecimal[] {BigDecimal.valueOf(12233.12), BigDecimal.TEN};
 
-    tableEnv
-        .fromValues(
-            schema.toSinkRowDataType(),
-            row(
-                "123",
-                123,
-                false,
-                12.345f,
-                123.4567d,
-                LocalDateTime.of(2021, 10, 31, 23, 34, 56),
-                LocalDateTime.of(2021, 10, 31, 23, 34, 56, 987654312),
-                LocalDate.of(2000, 9, 22),
-                LocalTime.of(12, 13, 14),
-                new int[] {1, 2, 3},
-                Row.of("test", null, LocalDate.of(2030, 9, 25)),
-                BigDecimal.valueOf(12.312),
-                decimalArray))
-        .executeInsert("test_table")
-        .await();
+    ApiExpression[] test = new ApiExpression[10];
+    for (int i = 0; i < test.length; i++) {
+      test[i] =
+          row(
+              "123",
+              i,
+              false,
+              12.345f,
+              123.4567d,
+              LocalDateTime.of(2021, 10, 31, 23, 34, 56),
+              LocalDateTime.of(2021, 10, 31, 23, 34, 56, 987654312),
+              LocalDate.of(2000, 9, 22),
+              LocalTime.of(12, 13, 14),
+              new int[] {1, 2, 3},
+              Row.of("test", null, LocalDate.of(2030, 9, 25)),
+              BigDecimal.valueOf(12.312),
+              decimalArray);
+    }
+    tableEnv.fromValues(schema.toSinkRowDataType(), test).executeInsert("test_table").await();
   }
 }

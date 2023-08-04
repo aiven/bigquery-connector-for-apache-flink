@@ -2,6 +2,7 @@ package io.aiven.flink.connectors.bigquery.sink;
 
 import org.apache.flink.configuration.ConfigOption;
 import org.apache.flink.configuration.ConfigOptions;
+import org.apache.flink.connector.base.DeliveryGuarantee;
 
 public class BigQueryConfigOptions {
   public static final ConfigOption<String> SERVICE_ACCOUNT =

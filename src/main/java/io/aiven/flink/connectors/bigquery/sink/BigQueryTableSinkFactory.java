@@ -7,14 +7,9 @@ import static io.aiven.flink.connectors.bigquery.sink.BigQueryConfigOptions.PROJ
 import static io.aiven.flink.connectors.bigquery.sink.BigQueryConfigOptions.SERVICE_ACCOUNT;
 import static io.aiven.flink.connectors.bigquery.sink.BigQueryConfigOptions.TABLE;
 
-import com.google.auth.Credentials;
-import com.google.auth.oauth2.ServiceAccountCredentials;
-import java.io.FileInputStream;
-import java.io.IOException;
 import java.util.Collections;
 import java.util.Set;
 import org.apache.flink.configuration.ConfigOption;
-import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.table.connector.sink.DynamicTableSink;
 import org.apache.flink.table.factories.DynamicTableSinkFactory;
 import org.apache.flink.table.factories.FactoryUtil;
@@ -33,22 +28,17 @@ public class BigQueryTableSinkFactory implements DynamicTableSinkFactory {
   public DynamicTableSink createDynamicTableSink(Context context) {
     FactoryUtil.TableFactoryHelper helper = FactoryUtil.createTableFactoryHelper(this, context);
     helper.validate();
-    Credentials credentials;
-    ReadableConfig config = helper.getOptions();
-    try (FileInputStream fis = new FileInputStream(config.get(SERVICE_ACCOUNT))) {
-      credentials = ServiceAccountCredentials.fromStream(fis);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+    BigQueryConfig config = new BigQueryConfig(helper.getOptions());
+
     BigQueryConnectionOptions options =
         new BigQueryConnectionOptions(
-            config.get(PROJECT_ID),
-            config.get(DATASET),
-            config.get(TABLE),
-            config.get(CREATE_TABLE_IF_NOT_PRESENT),
-            config.get(DELIVERY_GUARANTEE),
-            credentials);
-    return new BigQuerySink(
+            config.getProjectId(),
+            config.getDataset(),
+            config.getTableName(),
+            config.createTableIfNotExists(),
+            config.getDeliveryGuarantee(),
+            config.getCredentials());
+    return new BigQueryDynamicTableSink(
         context.getCatalogTable(),
         context.getCatalogTable().getResolvedSchema(),
         context.getPhysicalRowDataType(),
