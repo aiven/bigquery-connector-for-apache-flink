@@ -9,15 +9,18 @@ import com.google.api.gax.core.FixedCredentialsProvider;
 import com.google.cloud.bigquery.BigQueryException;
 import com.google.cloud.bigquery.storage.v1.BigQueryWriteClient;
 import com.google.cloud.bigquery.storage.v1.BigQueryWriteSettings;
+import com.google.cloud.bigquery.storage.v1.Exceptions;
 import com.google.cloud.bigquery.storage.v1.JsonStreamWriter;
 import com.google.protobuf.Descriptors;
 import java.io.IOException;
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.rmi.RemoteException;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Phaser;
 import javax.annotation.Nonnull;
@@ -135,6 +138,12 @@ public abstract class AbstractBigQueryOutputFormat extends RichOutputFormat<RowD
         | InterruptedException
         | ExecutionException e) {
       throw new IOException(e);
+    } catch (Exceptions.AppendSerializationError ase) {
+      Map<Integer, String> rowIndexToErrorMessage = ase.getRowIndexToErrorMessage();
+      if (rowIndexToErrorMessage != null && !rowIndexToErrorMessage.isEmpty()) {
+        throw new BigQueryConnectorRuntimeException(rowIndexToErrorMessage.toString(), ase);
+      }
+      throw ase;
     }
   }
 
