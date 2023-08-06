@@ -215,7 +215,63 @@ public class BigQuerySinkTest {
             },
             new String[] {"row"},
             new DataType[] {DataTypes.ROW(DataTypes.FIELD("date", DataTypes.DATE().notNull()))},
-            row(Row.of(Instant.now()))));
+            row(Row.of(Instant.now()))),
+        Arguments.of(
+            new String[] {"row"},
+            new DataType[] {
+              DataTypes.ROW(
+                  DataTypes.FIELD(
+                      "row",
+                      DataTypes.ROW(
+                              DataTypes.FIELD("int", DataTypes.INT()),
+                              DataTypes.FIELD("int2", DataTypes.INT().notNull()))
+                          .notNull()),
+                  DataTypes.FIELD("int", DataTypes.INT()),
+                  DataTypes.FIELD("date", DataTypes.DATE().notNull()),
+                  DataTypes.FIELD("double", DataTypes.DOUBLE()),
+                  DataTypes.FIELD("decimal", DataTypes.DECIMAL(3, 3)))
+            },
+            new String[] {"row"},
+            new DataType[] {
+              DataTypes.ROW(
+                  DataTypes.FIELD(
+                      "row",
+                      DataTypes.ROW(
+                          DataTypes.FIELD("int", DataTypes.INT()),
+                          DataTypes.FIELD("int2", DataTypes.INT().notNull()))),
+                  DataTypes.FIELD("date", DataTypes.DATE().notNull()))
+            },
+            row(Row.of(Row.of(123, 234), Instant.now()))),
+        Arguments.of(
+            new String[] {"string", "string1", "int", "date", "double"},
+            new DataType[] {
+              DataTypes.STRING(),
+              DataTypes.STRING(),
+              DataTypes.INT(),
+              DataTypes.DATE(),
+              DataTypes.DOUBLE()
+            },
+            new String[] {"int", "double"},
+            new DataType[] {DataTypes.INT(), DataTypes.DOUBLE()},
+            row(1, 3.14d)),
+
+        // Ideally this case should fail however because of Flink/Calcite issue it is not failed
+        // during validation
+        // instead it will fail during runtime if there is a NULL passed to not null column
+        Arguments.of(
+            new String[] {"row"},
+            new DataType[] {
+              DataTypes.ROW(
+                  DataTypes.FIELD("f1", DataTypes.STRING()),
+                  DataTypes.FIELD("f2", DataTypes.INT().notNull()))
+            },
+            new String[] {"row"},
+            new DataType[] {
+              DataTypes.ROW(
+                  DataTypes.FIELD("f1", DataTypes.STRING()), DataTypes.FIELD("f2", DataTypes.INT()))
+            },
+            row(Row.of("value1", 11)),
+            "Column #2 with name 'row.f2' is not nullable 'INT64' in BQ while in Flink it is nullable 'INT64'"));
   }
 
   @ParameterizedTest
@@ -276,14 +332,14 @@ public class BigQuerySinkTest {
             new String[] {"string"},
             new DataType[] {DataTypes.STRING()},
             row("value"),
-            "Column #1 has name 'invalid' in BQ while in Flink it has name 'string'"),
+            "There are unknown columns starting with #1 with name 'string'"),
         Arguments.of(
             new String[] {"string", "invalid"},
             new DataType[] {DataTypes.STRING(), DataTypes.STRING()},
             new String[] {"string", "string2"},
             new DataType[] {DataTypes.STRING(), DataTypes.STRING()},
             row("value1", "value2"),
-            "Column #2 has name 'invalid' in BQ while in Flink it has name 'string2'"),
+            "There are unknown columns starting with #2 with name 'string2'"),
         Arguments.of(
             new String[] {"field"},
             new DataType[] {DataTypes.INT()},
@@ -332,7 +388,7 @@ public class BigQuerySinkTest {
                   DataTypes.FIELD("f2", DataTypes.INT()))
             },
             row(Row.of("value1", 11)),
-            "Column #1 has name 'row.f1' in BQ while in Flink it has name 'row.invalid'"),
+            "There are unknown columns starting with #1 with name 'row.invalid'"),
         Arguments.of(
             new String[] {"row"},
             new DataType[] {
@@ -346,33 +402,7 @@ public class BigQuerySinkTest {
                   DataTypes.FIELD("f2", DataTypes.STRING()))
             },
             row(Row.of("value1", 11)),
-            "Column #2 with name 'row.f2' has type 'INT64' in BQ while in Flink it has type 'STRING'"),
-        Arguments.of(
-            new String[] {"row"},
-            new DataType[] {
-              DataTypes.ROW(
-                  DataTypes.FIELD("f1", DataTypes.STRING()),
-                  DataTypes.FIELD("f2", DataTypes.INT().notNull()))
-            },
-            new String[] {"row"},
-            new DataType[] {
-              DataTypes.ROW(
-                  DataTypes.FIELD("f1", DataTypes.STRING()), DataTypes.FIELD("f2", DataTypes.INT()))
-            },
-            row(Row.of("value1", 11)),
-            "Column #2 with name 'row.f2' is not nullable 'INT64' in BQ while in Flink it is nullable 'INT64'"),
-        Arguments.of(
-            new String[] {"string", "string1", "int", "date", "double"},
-            new DataType[] {
-              DataTypes.STRING(),
-              DataTypes.STRING(),
-              DataTypes.INT(),
-              DataTypes.DATE(),
-              DataTypes.DOUBLE()
-            },
-            new String[] {"int", "double"},
-            new DataType[] {DataTypes.INT(), DataTypes.DATE()},
-            row(1, 3.14d)));
+            "Column #2 with name 'row.f2' has type 'INT64' in BQ while in Flink it has type 'STRING'"));
   }
 
   private static void executeInsert(

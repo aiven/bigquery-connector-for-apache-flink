@@ -214,7 +214,7 @@ public class BigQuerySink implements DynamicTableSink {
       }
       if (existingFieldMode != Field.Mode.NULLABLE
           && fieldFromInsert.getMode() == Field.Mode.NULLABLE) {
-        if (parentName != null) {
+        if (!parentName.isBlank()) {
           // currently this is a bug in Calcite/Flink
           // so this validation will be done at runtime on BigQuery side
           fieldIndex++;
@@ -232,7 +232,7 @@ public class BigQuerySink implements DynamicTableSink {
                 + fieldFromInsert.getType().getStandardType()
                 + "'");
       }
-      if (existingField.getType() == LegacySQLTypeName.RECORD) {
+      if (LegacySQLTypeName.RECORD.equals(existingField.getType())) {
         validateTableDefinitions(
             existingField.getSubFields(), fieldFromInsert.getSubFields(), existingField.getName());
       }
@@ -240,7 +240,7 @@ public class BigQuerySink implements DynamicTableSink {
     }
     if (fieldIndex != fieldList.size()) {
       throw new ValidationException(
-          "There are unknown columns starting  with #"
+          "There are unknown columns starting with #"
               + (fieldIndex + 1)
               + " with name '"
               + parentName
