@@ -4,12 +4,15 @@ import com.google.cloud.bigquery.BigQueryOptions;
 import com.google.cloud.bigquery.DatasetInfo;
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.FieldList;
+import com.google.cloud.bigquery.LegacySQLTypeName;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.StandardTableDefinition;
 import com.google.cloud.bigquery.Table;
+import com.google.cloud.bigquery.TableDefinition;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableInfo;
+import com.google.cloud.bigquery.storage.v1.TableName;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumMap;
@@ -63,11 +66,16 @@ public class BigQuerySink implements DynamicTableSink {
   private final CatalogTable catalogTable;
   private final ResolvedSchema tableSchema;
   private final BigQueryConnectionOptions options;
+  private final DataType expectedDatatype;
 
   public BigQuerySink(
-      CatalogTable catalogTable, ResolvedSchema tableSchema, BigQueryConnectionOptions options) {
+      CatalogTable catalogTable,
+      ResolvedSchema tableSchema,
+      DataType expectedDatatype,
+      BigQueryConnectionOptions options) {
     this.catalogTable = catalogTable;
     this.tableSchema = tableSchema;
+    this.expectedDatatype = expectedDatatype;
     this.options = options;
   }
 
@@ -93,6 +101,7 @@ public class BigQuerySink implements DynamicTableSink {
     if (options.isCreateIfNotExists()) {
       ensureTableExists(fieldNames, fieldTypes, options);
     }
+
     AbstractBigQueryOutputFormat outputFormat =
         new AbstractBigQueryOutputFormat.Builder()
             .withFieldNames(fieldNames)
@@ -104,7 +113,7 @@ public class BigQuerySink implements DynamicTableSink {
 
   @Override
   public DynamicTableSink copy() {
-    return new BigQuerySink(catalogTable, tableSchema, options);
+    return new BigQuerySink(catalogTable, tableSchema, expectedDatatype, options);
   }
 
   @Override
@@ -115,31 +124,129 @@ public class BigQuerySink implements DynamicTableSink {
   @VisibleForTesting
   static Table ensureTableExists(
       String[] fieldNames, DataType[] types, BigQueryConnectionOptions options) {
-    var bigQuery =
+    TableName tableName = options.getTableName();
+    var bigQueryService =
         BigQueryOptions.newBuilder()
-            .setProjectId(options.getTableName().getProject())
+            .setProjectId(tableName.getProject())
             .setCredentials(options.getCredentials())
             .build()
             .getService();
-    var dataset = options.getTableName().getDataset();
-    if (bigQuery.getDataset(dataset) == null || !bigQuery.getDataset(dataset).exists()) {
-      bigQuery.create(DatasetInfo.newBuilder(dataset).build());
+    var dataset = tableName.getDataset();
+    if (bigQueryService.getDataset(dataset) == null
+        || !bigQueryService.getDataset(dataset).exists()) {
+      bigQueryService.create(DatasetInfo.newBuilder(dataset).build());
     }
-    var tableId =
-        TableId.of(
-            options.getTableName().getProject(),
-            options.getTableName().getDataset(),
-            options.getTableName().getTable());
-    Table table = bigQuery.getTable(tableId);
+    var tableId = TableId.of(tableName.getProject(), tableName.getDataset(), tableName.getTable());
+    Table table = bigQueryService.getTable(tableId);
+    StandardTableDefinition requiredDefinition =
+        StandardTableDefinition.newBuilder().setSchema(schemaBuilder(fieldNames, types)).build();
     if (table == null || !table.exists()) {
-      return bigQuery.create(
-          TableInfo.of(
-              tableId,
-              StandardTableDefinition.newBuilder()
-                  .setSchema(schemaBuilder(fieldNames, types))
-                  .build()));
+      return bigQueryService.create(TableInfo.of(tableId, requiredDefinition));
+    } else {
+      TableDefinition existingDefinition = table.getDefinition();
+      FieldList existingFieldList = existingDefinition.getSchema().getFields();
+      FieldList fieldList = requiredDefinition.getSchema().getFields();
+      validateTableDefinitions(existingFieldList, fieldList, null);
     }
     return table;
+  }
+
+  private static void validateTableDefinitions(
+      FieldList existingFieldList, FieldList fieldList, String parentTypeName) {
+    if (existingFieldList.size() < fieldList.size()) {
+      throw new ValidationException(
+          "Number of columns in BQ table ("
+              + existingFieldList.size()
+              + ") should be not less than a number of columns in corresponding Flink table ("
+              + fieldList.size()
+              + ")");
+    }
+    int fieldIndex = 0;
+    final String parentName = (parentTypeName == null ? "" : parentTypeName + ".");
+    for (int i = 0; i < existingFieldList.size(); i++) {
+      final Field existingField = existingFieldList.get(i);
+      Field.Mode existingFieldMode = existingField.getMode();
+      if (fieldIndex >= fieldList.size()) {
+        if (existingFieldMode != Field.Mode.NULLABLE) {
+          throw new ValidationException(
+              "Column #"
+                  + (i + 1)
+                  + " with name '"
+                  + parentName
+                  + existingField.getName()
+                  + "' in BQ is required however is absent in Flink table");
+        }
+        continue;
+      }
+      final Field fieldFromInsert = fieldList.get(fieldIndex);
+
+      if (existingFieldMode == Field.Mode.NULLABLE
+          && !existingField.getName().equals(fieldFromInsert.getName())) {
+        continue;
+      }
+      if (!fieldFromInsert.getName().equals(existingField.getName())) {
+        throw new ValidationException(
+            "Column #"
+                + (i + 1)
+                + " has name '"
+                + parentName
+                + existingField.getName()
+                + "' in BQ while in Flink it has name '"
+                + parentName
+                + fieldFromInsert.getName()
+                + "'");
+      }
+      if (!fieldFromInsert
+          .getType()
+          .getStandardType()
+          .equals(existingField.getType().getStandardType())) {
+        throw new ValidationException(
+            "Column #"
+                + (i + 1)
+                + " with name '"
+                + parentName
+                + existingField.getName()
+                + "' has type '"
+                + existingField.getType().getStandardType()
+                + "' in BQ while in Flink it has type '"
+                + fieldFromInsert.getType().getStandardType()
+                + "'");
+      }
+      if (existingFieldMode != Field.Mode.NULLABLE
+          && fieldFromInsert.getMode() == Field.Mode.NULLABLE) {
+        if (parentName != null) {
+          // currently this is a bug in Calcite/Flink
+          // so this validation will be done at runtime on BigQuery side
+          fieldIndex++;
+          continue;
+        }
+        throw new ValidationException(
+            "Column #"
+                + (i + 1)
+                + " with name '"
+                + parentName
+                + existingField.getName()
+                + "' is not nullable '"
+                + existingField.getType().getStandardType()
+                + "' in BQ while in Flink it is nullable '"
+                + fieldFromInsert.getType().getStandardType()
+                + "'");
+      }
+      if (existingField.getType() == LegacySQLTypeName.RECORD) {
+        validateTableDefinitions(
+            existingField.getSubFields(), fieldFromInsert.getSubFields(), existingField.getName());
+      }
+      fieldIndex++;
+    }
+    if (fieldIndex != fieldList.size()) {
+      throw new ValidationException(
+          "There are unknown columns starting  with #"
+              + (fieldIndex + 1)
+              + " with name '"
+              + parentName
+              + fieldList.get(fieldIndex).getName()
+              + "'");
+    }
   }
 
   private static Schema schemaBuilder(String[] fieldNames, DataType[] types) {
@@ -175,6 +282,12 @@ public class BigQuerySink implements DynamicTableSink {
                 : logicalType.getTypeRoot());
     if (standardSQLTypeName == null) {
       throw new ValidationException("Type " + logicalType + " is not supported");
+    }
+    if (logicalType.is(LogicalTypeRoot.ARRAY) && logicalType.getChildren().get(0).isNullable()) {
+      throw new ValidationException(
+          "Type "
+              + logicalType
+              + " is not supported (nullable elements of array are not supported by BQ)");
     }
     Field.Builder fBuilder;
     if (logicalType.is(LogicalTypeRoot.ROW)
