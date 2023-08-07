@@ -49,7 +49,10 @@ public class BigQueryTableSinkFactory implements DynamicTableSinkFactory {
             config.get(DELIVERY_GUARANTEE),
             credentials);
     return new BigQuerySink(
-        context.getCatalogTable(), context.getCatalogTable().getResolvedSchema(), options);
+        context.getCatalogTable(),
+        context.getCatalogTable().getResolvedSchema(),
+        context.getPhysicalRowDataType(),
+        options);
   }
 
   @Override

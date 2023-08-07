@@ -40,7 +40,8 @@ public class FlinkBigQueryConnectorIntegrationTest {
             Column.metadata("tmp9", DataTypes.TIMESTAMP(9).nullable(), null, false),
             Column.metadata("date", DataTypes.DATE().nullable(), null, false),
             Column.metadata("time", DataTypes.TIME().nullable(), null, false),
-            Column.metadata("array", DataTypes.ARRAY(DataTypes.INT()).nullable(), null, false),
+            Column.metadata(
+                "array", DataTypes.ARRAY(DataTypes.INT().notNull()).nullable(), null, false),
             Column.metadata(
                 "row",
                 DataTypes.ROW(
@@ -52,7 +53,7 @@ public class FlinkBigQueryConnectorIntegrationTest {
             Column.metadata("decimal", DataTypes.DECIMAL(5, 3).nullable(), null, false),
             Column.metadata(
                 "decimal_array",
-                DataTypes.ARRAY(DataTypes.DECIMAL(7, 2).nullable()).nullable(),
+                DataTypes.ARRAY(DataTypes.DECIMAL(7, 2).notNull()).nullable(),
                 null,
                 false));
     tableEnv
@@ -67,10 +68,10 @@ public class FlinkBigQueryConnectorIntegrationTest {
                 + "  `tmp9` TIMESTAMP(9),\n"
                 + "  `date` DATE,\n"
                 + "  `time` TIME,\n"
-                + "  `array` ARRAY<INT>,\n"
+                + "  `array` ARRAY<INT NOT NULL>,\n"
                 + "  `row` ROW<string_field STRING, int_field INT, date_field DATE>,\n"
                 + "  `decimal` DECIMAL(5, 3),\n"
-                + "  `decimal_array` ARRAY<DECIMAL(7, 2)>\n"
+                + "  `decimal_array` ARRAY<DECIMAL(7, 2) NOT NULL>\n"
                 + ") WITH (\n"
                 + "  'connector' = 'bigquery',"
                 + "  'service-account' = '"
