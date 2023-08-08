@@ -43,8 +43,12 @@ public class BigQueryStreamingExactlyOnceOutputFormat extends AbstractBigQueryOu
     // Use the JSON stream writer to send records in JSON format.
     // For more information about JsonStreamWriter, see:
     // https://googleapis.dev/java/google-cloud-bigquerystorage/latest/com/google/cloud/bigquery/storage/v1/JsonStreamWriter.html
-    return JsonStreamWriter.newBuilder(writeStream.getName(), writeStream.getTableSchema(), client)
-        .build();
+    JsonStreamWriter.Builder builder =
+        JsonStreamWriter.newBuilder(writeStream.getName(), writeStream.getTableSchema(), client);
+    if (options.getCompression() == Compression.NO_COMPRESSION) {
+      return builder.build();
+    }
+    return builder.setCompressorName(options.getCompression().getValue()).build();
   }
 
   @Override
