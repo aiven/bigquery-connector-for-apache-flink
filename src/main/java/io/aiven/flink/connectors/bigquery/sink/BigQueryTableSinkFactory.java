@@ -28,16 +28,9 @@ public class BigQueryTableSinkFactory implements DynamicTableSinkFactory {
   public DynamicTableSink createDynamicTableSink(Context context) {
     FactoryUtil.TableFactoryHelper helper = FactoryUtil.createTableFactoryHelper(this, context);
     helper.validate();
-    BigQueryConfig config = new BigQueryConfig(helper.getOptions());
 
     BigQueryConnectionOptions options =
-        new BigQueryConnectionOptions(
-            config.getProjectId(),
-            config.getDataset(),
-            config.getTableName(),
-            config.createTableIfNotExists(),
-            config.getDeliveryGuarantee(),
-            config.getCredentials());
+        BigQueryConnectionOptions.fromReadableConfig(helper.getOptions());
     return new BigQueryDynamicTableSink(
         context.getCatalogTable(),
         context.getCatalogTable().getResolvedSchema(),

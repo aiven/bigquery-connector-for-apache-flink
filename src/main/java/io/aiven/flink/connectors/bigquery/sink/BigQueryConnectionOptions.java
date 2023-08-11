@@ -1,8 +1,19 @@
 package io.aiven.flink.connectors.bigquery.sink;
 
+import static io.aiven.flink.connectors.bigquery.sink.BigQueryConfigOptions.CREATE_TABLE_IF_NOT_PRESENT;
+import static io.aiven.flink.connectors.bigquery.sink.BigQueryConfigOptions.DATASET;
+import static io.aiven.flink.connectors.bigquery.sink.BigQueryConfigOptions.DELIVERY_GUARANTEE;
+import static io.aiven.flink.connectors.bigquery.sink.BigQueryConfigOptions.PROJECT_ID;
+import static io.aiven.flink.connectors.bigquery.sink.BigQueryConfigOptions.SERVICE_ACCOUNT;
+import static io.aiven.flink.connectors.bigquery.sink.BigQueryConfigOptions.TABLE;
+
 import com.google.auth.Credentials;
+import com.google.auth.oauth2.ServiceAccountCredentials;
 import com.google.cloud.bigquery.storage.v1.TableName;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.Serializable;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.connector.base.DeliveryGuarantee;
 
 public class BigQueryConnectionOptions implements Serializable {
@@ -30,6 +41,22 @@ public class BigQueryConnectionOptions implements Serializable {
     this.createIfNotExists = createIfNotExists;
     this.deliveryGuarantee = deliveryGuarantee;
     this.credentials = credentials;
+  }
+
+  public static BigQueryConnectionOptions fromReadableConfig(ReadableConfig config) {
+    final Credentials credentials;
+    try (FileInputStream fis = new FileInputStream(config.get(SERVICE_ACCOUNT))) {
+      credentials = ServiceAccountCredentials.fromStream(fis);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+    return new BigQueryConnectionOptions(
+        config.get(PROJECT_ID),
+        config.get(DATASET),
+        config.get(TABLE),
+        config.get(CREATE_TABLE_IF_NOT_PRESENT),
+        config.get(DELIVERY_GUARANTEE),
+        credentials);
   }
 
   public TableName getTableName() {
