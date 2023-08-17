@@ -61,7 +61,6 @@ public abstract class BigQueryWriter implements SinkWriter<RowData> {
           Status.Code.DEADLINE_EXCEEDED,
           Status.Code.UNAVAILABLE);
   protected static final int MAX_RECREATE_COUNT = 3;
-  private static final int MAX_RETRY_COUNT = 3;
   protected final String[] fieldNames;
 
   protected final LogicalType[] fieldTypes;
@@ -381,7 +380,7 @@ public abstract class BigQueryWriter implements SinkWriter<RowData> {
     synchronized (this.lock) {
       if (!streamWriter.isUserClosed()
           && streamWriter.isClosed()
-          && recreateCount.getAndIncrement() < MAX_RECREATE_COUNT) {
+          && recreateCount.getAndIncrement() < options.getRecreateCount()) {
         streamWriter =
             JsonStreamWriter.newBuilder(streamWriter.getStreamName(), BigQueryWriteClient.create())
                 .setFlowControlSettings(
@@ -438,7 +437,7 @@ public abstract class BigQueryWriter implements SinkWriter<RowData> {
       // If the state is INTERNAL, CANCELLED, or ABORTED, you can retry. For more information,
       // see: https://grpc.github.io/grpc-java/javadoc/io/grpc/StatusRuntimeException.html
       Status status = Status.fromThrowable(throwable);
-      if (appendContext.retryCount < MAX_RETRY_COUNT
+      if (appendContext.retryCount < this.parent.options.getRetryCount()
           && RETRIABLE_ERROR_CODES.contains(status.getCode())) {
         appendContext.retryCount++;
         try {

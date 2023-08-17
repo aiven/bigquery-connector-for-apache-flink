@@ -54,6 +54,8 @@ public class BigQuerySinkTest {
               dg,
               1000L,
               100 * 1024 * 1024,
+              10,
+              10,
               CREDENTIALS);
       var table = BigQueryDynamicTableSink.ensureTableExists(fieldNames, fieldTypes, options);
       table.delete();
@@ -148,6 +150,8 @@ public class BigQuerySinkTest {
             DeliveryGuarantee.EXACTLY_ONCE,
             1000L,
             100 * 1024 * 1024,
+            10,
+            10,
             CREDENTIALS);
     var table = BigQueryDynamicTableSink.ensureTableExists(bqColumnNames, bqColumnTypes, options);
     List<Column> columns = new ArrayList<>();
@@ -303,6 +307,8 @@ public class BigQuerySinkTest {
             DeliveryGuarantee.EXACTLY_ONCE,
             1000L,
             100 * 1024 * 1024,
+            10,
+            10,
             CREDENTIALS);
     var table = BigQueryDynamicTableSink.ensureTableExists(bqColumnNames, bqColumnTypes, options);
     List<Column> columns = new ArrayList<>();

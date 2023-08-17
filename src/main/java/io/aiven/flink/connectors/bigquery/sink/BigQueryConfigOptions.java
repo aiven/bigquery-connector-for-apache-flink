@@ -47,4 +47,16 @@ public class BigQueryConfigOptions {
           .longType()
           .defaultValue(100 * 1024 * 1024L)
           .withDescription("Determines maximum sum of request sizes in bytes to BigQuery");
+
+  public static final ConfigOption<Integer> RETRY_COUNT =
+      ConfigOptions.key("retry-count")
+          .intType()
+          .defaultValue(10)
+          .withDescription("Determines amount of retry attempts");
+
+  public static final ConfigOption<Integer> RECREATE_COUNT =
+      ConfigOptions.key("recreate-count")
+          .intType()
+          .defaultValue(10)
+          .withDescription("Determines amount of recreate attempts");
 }
