@@ -3,6 +3,8 @@ package io.aiven.flink.connectors.bigquery.sink;
 import static io.aiven.flink.connectors.bigquery.sink.BigQueryConfigOptions.CREATE_TABLE_IF_NOT_PRESENT;
 import static io.aiven.flink.connectors.bigquery.sink.BigQueryConfigOptions.DATASET;
 import static io.aiven.flink.connectors.bigquery.sink.BigQueryConfigOptions.DELIVERY_GUARANTEE;
+import static io.aiven.flink.connectors.bigquery.sink.BigQueryConfigOptions.MAX_OUTSTANDING_ELEMENTS_COUNT;
+import static io.aiven.flink.connectors.bigquery.sink.BigQueryConfigOptions.MAX_OUTSTANDING_REQUEST_BYTES;
 import static io.aiven.flink.connectors.bigquery.sink.BigQueryConfigOptions.PROJECT_ID;
 import static io.aiven.flink.connectors.bigquery.sink.BigQueryConfigOptions.SERVICE_ACCOUNT;
 import static io.aiven.flink.connectors.bigquery.sink.BigQueryConfigOptions.TABLE;
@@ -22,7 +24,9 @@ public class BigQueryTableSinkFactory implements DynamicTableSinkFactory {
           DATASET,
           TABLE,
           CREATE_TABLE_IF_NOT_PRESENT,
-          DELIVERY_GUARANTEE);
+          DELIVERY_GUARANTEE,
+          MAX_OUTSTANDING_ELEMENTS_COUNT,
+          MAX_OUTSTANDING_REQUEST_BYTES);
 
   @Override
   public DynamicTableSink createDynamicTableSink(Context context) {

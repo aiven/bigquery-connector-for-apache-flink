@@ -9,6 +9,7 @@ import static java.time.format.DateTimeFormatter.ISO_TIME;
 import com.google.api.core.ApiFuture;
 import com.google.api.core.ApiFutureCallback;
 import com.google.api.core.ApiFutures;
+import com.google.api.gax.batching.FlowControlSettings;
 import com.google.api.gax.core.FixedCredentialsProvider;
 import com.google.cloud.bigquery.BigQueryException;
 import com.google.cloud.bigquery.storage.v1.AppendRowsResponse;
@@ -34,7 +35,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import javax.annotation.Nonnull;
 import javax.annotation.concurrent.GuardedBy;
 import org.apache.flink.api.connector.sink2.SinkWriter;
-import org.apache.flink.connector.base.DeliveryGuarantee;
 import org.apache.flink.table.data.ArrayData;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.types.DataType;
@@ -384,6 +384,11 @@ public abstract class BigQueryWriter implements SinkWriter<RowData> {
           && recreateCount.getAndIncrement() < MAX_RECREATE_COUNT) {
         streamWriter =
             JsonStreamWriter.newBuilder(streamWriter.getStreamName(), BigQueryWriteClient.create())
+                .setFlowControlSettings(
+                    FlowControlSettings.newBuilder()
+                        .setMaxOutstandingElementCount(options.getMaxOutstandingElementsCount())
+                        .setMaxOutstandingRequestBytes(options.getMaxOutstandingRequestBytes())
+                        .build())
                 .build();
         this.error = null;
       }

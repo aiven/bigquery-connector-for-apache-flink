@@ -1,5 +1,6 @@
 package io.aiven.flink.connectors.bigquery.sink;
 
+import com.google.api.gax.batching.FlowControlSettings;
 import com.google.api.gax.core.FixedExecutorProvider;
 import com.google.cloud.bigquery.storage.v1.BigQueryWriteClient;
 import com.google.cloud.bigquery.storage.v1.BigQueryWriteSettings;
@@ -36,7 +37,12 @@ public class BigQueryStreamingAtLeastOnceSinkWriter extends BigQueryWriter {
     WriteStream writeStream = client.createWriteStream(createWriteStreamRequest);
 
     JsonStreamWriter.Builder builder =
-        JsonStreamWriter.newBuilder(writeStream.getName(), writeStream.getTableSchema(), client);
+        JsonStreamWriter.newBuilder(writeStream.getName(), writeStream.getTableSchema(), client)
+            .setFlowControlSettings(
+                FlowControlSettings.newBuilder()
+                    .setMaxOutstandingElementCount(options.getMaxOutstandingElementsCount())
+                    .setMaxOutstandingRequestBytes(options.getMaxOutstandingRequestBytes())
+                    .build());
     return builder
         .setExecutorProvider(FixedExecutorProvider.create(Executors.newScheduledThreadPool(100)))
         .setChannelProvider(

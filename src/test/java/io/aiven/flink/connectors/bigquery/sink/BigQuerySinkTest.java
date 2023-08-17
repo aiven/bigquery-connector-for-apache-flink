@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Stream;
-import org.apache.flink.connector.base.DeliveryGuarantee;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
@@ -53,6 +52,8 @@ public class BigQuerySinkTest {
               tableName + "-" + dg.name(),
               true,
               dg,
+              1000L,
+              100 * 1024 * 1024,
               CREDENTIALS);
       var table = BigQueryDynamicTableSink.ensureTableExists(fieldNames, fieldTypes, options);
       table.delete();
@@ -145,6 +146,8 @@ public class BigQuerySinkTest {
             bigQueryTableName,
             true,
             DeliveryGuarantee.EXACTLY_ONCE,
+            1000L,
+            100 * 1024 * 1024,
             CREDENTIALS);
     var table = BigQueryDynamicTableSink.ensureTableExists(bqColumnNames, bqColumnTypes, options);
     List<Column> columns = new ArrayList<>();
@@ -298,6 +301,8 @@ public class BigQuerySinkTest {
             bigQueryTableName,
             true,
             DeliveryGuarantee.EXACTLY_ONCE,
+            1000L,
+            100 * 1024 * 1024,
             CREDENTIALS);
     var table = BigQueryDynamicTableSink.ensureTableExists(bqColumnNames, bqColumnTypes, options);
     List<Column> columns = new ArrayList<>();

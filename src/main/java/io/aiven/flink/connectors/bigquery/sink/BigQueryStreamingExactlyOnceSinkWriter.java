@@ -47,7 +47,10 @@ public class BigQueryStreamingExactlyOnceSinkWriter extends BigQueryWriter {
     JsonStreamWriter.Builder builder =
         JsonStreamWriter.newBuilder(writeStream.getName(), writeStream.getTableSchema(), client)
             .setFlowControlSettings(
-                FlowControlSettings.newBuilder().setMaxOutstandingElementCount(10000L).build());
+                FlowControlSettings.newBuilder()
+                    .setMaxOutstandingElementCount(options.getMaxOutstandingElementsCount())
+                    .setMaxOutstandingRequestBytes(options.getMaxOutstandingRequestBytes())
+                    .build());
     return builder.build();
   }
 

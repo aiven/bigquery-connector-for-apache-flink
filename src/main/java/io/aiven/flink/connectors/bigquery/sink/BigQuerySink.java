@@ -5,7 +5,6 @@ import javax.annotation.Nonnull;
 import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.api.connector.sink2.Sink;
 import org.apache.flink.api.connector.sink2.SinkWriter;
-import org.apache.flink.connector.base.DeliveryGuarantee;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.types.logical.LogicalType;
 import org.apache.flink.util.Preconditions;
