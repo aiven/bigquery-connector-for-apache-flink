@@ -98,3 +98,22 @@ WITH (
 'delivery-guarantee' = 'EXACTLY_ONCE',
 ...
 ```
+
+## Performance
+
+Quick performance test gives an idea how fast is it and what are the bottlenecks.
+
+The test of writing data to a single column table. From local machine it takes about 1 min 40 sec to process 1000000 records and about 17 min to process 10x more 10000000 records.
+If we look at only connector's related part
+there are 2 main CPU consumers: converter from JSON to PROTO and `com.google.cloud.bigquery.storage.v1.ConnectionWorker#maybeWaitForInflightQuota` which makes connector waiting for inflight quota.
+At the same time the limitation for inflight quota could be configured via `FlowController`. For instance by default it allows to have 1000 concurrent requests to BigQuery or 100Mb total size of requests.
+Some tests show that increasing of number of concurrent requests to 10000 allows to speed up (about 1 min to process 1000000 records). The parameter could be changed via config options.
+
+![docs/imgs/1column-table-profiler.png](docs/imgs/1column-table-profiler.png)
+![docs/imgs/gcheap.png](docs/imgs/gcheap.png)
+
+Since currently data in connector are sending in JSON and then internally converted to PROTO it would make sense to send in PROTO. Probably it is a topic for a separate issue.
+
+Data for tables with larger variety of columns are similar (2 main CPU consumers).
+
+
