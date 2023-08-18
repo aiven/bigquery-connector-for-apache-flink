@@ -108,6 +108,7 @@ If we look at only connector's related part
 there are 2 main CPU consumers: converter from JSON to PROTO and `com.google.cloud.bigquery.storage.v1.ConnectionWorker#maybeWaitForInflightQuota` which makes connector waiting for inflight quota.
 At the same time the limitation for inflight quota could be configured via `FlowController`. For instance by default it allows to have 1000 concurrent requests to BigQuery or 100Mb total size of requests.
 Some tests show that increasing of number of concurrent requests to 10000 allows to speed up (about 1 min to process 1000000 records). The parameter could be changed via config options.
+Please keep in mind that depending on network timings could differ.
 
 ![docs/imgs/1column-table-profiler.png](docs/imgs/1column-table-profiler.png)
 ![docs/imgs/gcheap.png](docs/imgs/gcheap.png)
