@@ -116,5 +116,3 @@ Please keep in mind that depending on network timings could differ.
 Since currently data in connector are sending in JSON and then internally converted to PROTO it would make sense to send in PROTO. Probably it is a topic for a separate issue.
 
 Data for tables with larger variety of columns are similar (2 main CPU consumers).
-
-

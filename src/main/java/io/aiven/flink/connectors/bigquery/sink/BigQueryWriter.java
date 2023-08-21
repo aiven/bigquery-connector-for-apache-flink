@@ -1,17 +1,26 @@
 package io.aiven.flink.connectors.bigquery.sink;
 
+import static io.grpc.Status.Code.ALREADY_EXISTS;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 import static java.time.format.DateTimeFormatter.ISO_TIME;
 
+import com.google.api.core.ApiFuture;
+import com.google.api.core.ApiFutureCallback;
+import com.google.api.core.ApiFutures;
+import com.google.api.gax.batching.FlowControlSettings;
 import com.google.api.gax.core.FixedCredentialsProvider;
 import com.google.cloud.bigquery.BigQueryException;
+import com.google.cloud.bigquery.storage.v1.AppendRowsResponse;
 import com.google.cloud.bigquery.storage.v1.BigQueryWriteClient;
 import com.google.cloud.bigquery.storage.v1.BigQueryWriteSettings;
 import com.google.cloud.bigquery.storage.v1.Exceptions;
 import com.google.cloud.bigquery.storage.v1.JsonStreamWriter;
+import com.google.common.collect.ImmutableList;
+import com.google.common.util.concurrent.MoreExecutors;
 import com.google.protobuf.Descriptors;
+import io.grpc.Status;
 import java.io.IOException;
 import java.io.Serializable;
 import java.math.BigDecimal;
@@ -22,10 +31,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Phaser;
+import java.util.concurrent.atomic.AtomicInteger;
 import javax.annotation.Nonnull;
 import javax.annotation.concurrent.GuardedBy;
-import org.apache.flink.api.common.io.RichOutputFormat;
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.api.connector.sink2.SinkWriter;
 import org.apache.flink.table.data.ArrayData;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.types.DataType;
@@ -36,12 +45,22 @@ import org.apache.flink.table.types.logical.utils.LogicalTypeChecks;
 import org.apache.flink.util.Preconditions;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.threeten.bp.Duration;
 
 /** Abstract class of BigQuery output format. */
-public abstract class AbstractBigQueryOutputFormat extends RichOutputFormat<RowData> {
-
-  private static final long serialVersionUID = 1L;
-
+public abstract class BigQueryWriter implements SinkWriter<RowData> {
+  private static final Logger LOG = LoggerFactory.getLogger(BigQueryWriter.class);
+  private static final ImmutableList<Status.Code> RETRIABLE_ERROR_CODES =
+      ImmutableList.of(
+          Status.Code.INTERNAL,
+          Status.Code.ABORTED,
+          Status.Code.CANCELLED,
+          Status.Code.FAILED_PRECONDITION,
+          Status.Code.DEADLINE_EXCEEDED,
+          Status.Code.UNAVAILABLE);
+  protected static final int MAX_RECREATE_COUNT = 3;
   protected final String[] fieldNames;
 
   protected final LogicalType[] fieldTypes;
@@ -53,38 +72,41 @@ public abstract class AbstractBigQueryOutputFormat extends RichOutputFormat<RowD
 
   // Track the number of in-flight requests to wait for all responses before shutting down.
   protected transient Phaser inflightRequestCount;
+  protected final AtomicInteger recreateCount = new AtomicInteger(0);
 
   protected final Serializable lock = new Serializable() {};
 
   @GuardedBy("lock")
   protected RuntimeException error = null;
 
-  public AbstractBigQueryOutputFormat(
+  public BigQueryWriter(
       @Nonnull String[] fieldNames,
       @Nonnull LogicalType[] fieldTypes,
       @Nonnull BigQueryConnectionOptions options) {
     this.fieldNames = Preconditions.checkNotNull(fieldNames);
     this.fieldTypes = Preconditions.checkNotNull(fieldTypes);
     this.options = Preconditions.checkNotNull(options);
-  }
-
-  @Override
-  public void configure(Configuration parameters) {}
-
-  @Override
-  public void open(int taskNumber, int numTasks) throws IOException {
+    FixedCredentialsProvider creds = FixedCredentialsProvider.create(options.getCredentials());
+    inflightRequestCount = new Phaser(1);
+    BigQueryWriteSettings.Builder bigQueryWriteSettingsBuilder = BigQueryWriteSettings.newBuilder();
+    bigQueryWriteSettingsBuilder
+        .createWriteStreamSettings()
+        .setRetrySettings(
+            bigQueryWriteSettingsBuilder.createWriteStreamSettings().getRetrySettings().toBuilder()
+                .setTotalTimeout(Duration.ofSeconds(30))
+                .build());
     try {
-      FixedCredentialsProvider creds = FixedCredentialsProvider.create(options.getCredentials());
-      inflightRequestCount = new Phaser(1);
-      client =
-          BigQueryWriteClient.create(
-              BigQueryWriteSettings.newBuilder().setCredentialsProvider(creds).build());
-
+      BigQueryWriteSettings bigQueryWriteSettings =
+          bigQueryWriteSettingsBuilder.setCredentialsProvider(creds).build();
+      client = BigQueryWriteClient.create(bigQueryWriteSettings);
       streamWriter = getStreamWriter(options, client);
-    } catch (Descriptors.DescriptorValidationException | InterruptedException e) {
-      throw new IOException(e);
+    } catch (IOException | Descriptors.DescriptorValidationException | InterruptedException e) {
+      throw new RuntimeException(e);
     }
   }
+
+  @Override
+  public void flush(boolean endOfInput) throws IOException, InterruptedException {}
 
   @Override
   public void close() throws IOException {
@@ -119,7 +141,7 @@ public abstract class AbstractBigQueryOutputFormat extends RichOutputFormat<RowD
   }
 
   @Override
-  public void writeRecord(RowData record) throws IOException {
+  public void write(RowData record, Context context) throws IOException {
     try {
       JSONObject rowContent = new JSONObject();
       final int arity = record.getArity();
@@ -179,15 +201,15 @@ public abstract class AbstractBigQueryOutputFormat extends RichOutputFormat<RowD
       return this;
     }
 
-    public AbstractBigQueryOutputFormat build() {
+    public BigQueryWriter build() {
       Preconditions.checkNotNull(fieldNames);
       Preconditions.checkNotNull(fieldDataTypes);
       LogicalType[] logicalTypes =
           Arrays.stream(fieldDataTypes).map(DataType::getLogicalType).toArray(LogicalType[]::new);
       if (options.getDeliveryGuarantee() == DeliveryGuarantee.AT_LEAST_ONCE) {
-        return new BigQueryStreamingAtLeastOnceOutputFormat(fieldNames, logicalTypes, options);
+        return new BigQueryStreamingAtLeastOnceSinkWriter(fieldNames, logicalTypes, options);
       }
-      return new BigQueryStreamingExactlyOnceOutputFormat(fieldNames, logicalTypes, options);
+      return new BigQueryStreamingExactlyOnceSinkWriter(fieldNames, logicalTypes, options);
     }
   }
 
@@ -350,6 +372,139 @@ public abstract class AbstractBigQueryOutputFormat extends RichOutputFormat<RowD
         */
       default:
         throw new RuntimeException(arrayType.getElementType().getTypeRoot() + " is not supported");
+    }
+  }
+
+  protected void append(AppendContext appendContext)
+      throws Descriptors.DescriptorValidationException, IOException, InterruptedException {
+    synchronized (this.lock) {
+      if (!streamWriter.isUserClosed()
+          && streamWriter.isClosed()
+          && recreateCount.getAndIncrement() < options.getRecreateCount()) {
+        streamWriter =
+            JsonStreamWriter.newBuilder(streamWriter.getStreamName(), BigQueryWriteClient.create())
+                .setFlowControlSettings(
+                    FlowControlSettings.newBuilder()
+                        .setMaxOutstandingElementCount(options.getMaxOutstandingElementsCount())
+                        .setMaxOutstandingRequestBytes(options.getMaxOutstandingRequestBytes())
+                        .build())
+                .build();
+        this.error = null;
+      }
+      // If earlier appends have failed, we need to reset before continuing.
+      if (this.error != null) {
+        throw new IOException(this.error);
+      }
+    }
+    // Append asynchronously for increased throughput.
+    ApiFuture<AppendRowsResponse> future = streamWriter.append(appendContext.data);
+    ApiFutures.addCallback(
+        future, new AppendCompleteCallback(this, appendContext), MoreExecutors.directExecutor());
+
+    // Increase the count of in-flight requests.
+    inflightRequestCount.register();
+  }
+
+  protected static class AppendContext {
+
+    private final JSONArray data;
+    private int retryCount = 0;
+
+    AppendContext(JSONArray data) {
+      this.data = data;
+    }
+  }
+
+  static class AppendCompleteCallback implements ApiFutureCallback<AppendRowsResponse> {
+
+    private final BigQueryWriter parent;
+    private final AppendContext appendContext;
+
+    public AppendCompleteCallback(BigQueryWriter parent, AppendContext appendContext) {
+      this.parent = parent;
+      this.appendContext = appendContext;
+    }
+
+    @Override
+    public void onSuccess(AppendRowsResponse response) {
+      this.parent.recreateCount.set(0);
+      done();
+    }
+
+    @Override
+    public void onFailure(Throwable throwable) {
+      // If the wrapped exception is a StatusRuntimeException, check the state of the operation.
+      // If the state is INTERNAL, CANCELLED, or ABORTED, you can retry. For more information,
+      // see: https://grpc.github.io/grpc-java/javadoc/io/grpc/StatusRuntimeException.html
+      Status status = Status.fromThrowable(throwable);
+      if (appendContext.retryCount < this.parent.options.getRetryCount()
+          && RETRIABLE_ERROR_CODES.contains(status.getCode())) {
+        appendContext.retryCount++;
+        try {
+          // Since default stream appends are not ordered, we can simply retry the appends.
+          // Retrying with exclusive streams requires more careful consideration.
+          this.parent.append(appendContext);
+          // Mark the existing attempt as done since it's being retried.
+          done();
+          return;
+        } catch (Exception e) {
+          // Fall through to return error.
+          LOG.error("Failed to retry append: ", e);
+          // we should throw exception only when all attempts are used
+          e.addSuppressed(throwable);
+          throwable = e;
+        }
+      }
+      if (status.getCode() == ALREADY_EXISTS) {
+        LOG.info("Message for this offset already exists");
+        done();
+        return;
+      }
+
+      if (throwable instanceof Exceptions.AppendSerializationError) {
+        Exceptions.AppendSerializationError ase = (Exceptions.AppendSerializationError) throwable;
+        Map<Integer, String> rowIndexToErrorMessage = ase.getRowIndexToErrorMessage();
+        if (!rowIndexToErrorMessage.isEmpty()) {
+          // Omit the faulty rows
+          JSONArray dataNew = new JSONArray();
+          for (int i = 0; i < appendContext.data.length(); i++) {
+            if (!rowIndexToErrorMessage.containsKey(i)) {
+              dataNew.put(appendContext.data.get(i));
+            } else {
+              // process faulty rows by placing them on a dead-letter-queue, for instance
+            }
+          }
+
+          // Retry the remaining valid rows, but using a separate thread to
+          // avoid potentially blocking while we are in a callback.
+          if (!dataNew.isEmpty()) {
+            try {
+              this.parent.append(new AppendContext(dataNew));
+            } catch (Descriptors.DescriptorValidationException
+                | IOException
+                | InterruptedException e) {
+              throw new RuntimeException(e);
+            }
+          }
+          // Mark the existing attempt as done since we got a response for it
+          done();
+          return;
+        }
+      }
+
+      synchronized (this.parent.lock) {
+        if (this.parent.error == null) {
+          Exceptions.StorageException storageException = Exceptions.toStorageException(throwable);
+          this.parent.error =
+              (storageException != null) ? storageException : new RuntimeException(throwable);
+        }
+      }
+      done();
+    }
+
+    private void done() {
+      // Reduce the count of in-flight requests.
+      this.parent.inflightRequestCount.arriveAndDeregister();
     }
   }
 }

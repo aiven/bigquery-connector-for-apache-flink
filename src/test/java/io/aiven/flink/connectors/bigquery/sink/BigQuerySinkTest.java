@@ -52,8 +52,12 @@ public class BigQuerySinkTest {
               tableName + "-" + dg.name(),
               true,
               dg,
+              1000L,
+              100 * 1024 * 1024,
+              10,
+              10,
               CREDENTIALS);
-      var table = BigQuerySink.ensureTableExists(fieldNames, fieldTypes, options);
+      var table = BigQueryDynamicTableSink.ensureTableExists(fieldNames, fieldTypes, options);
       table.delete();
     }
   }
@@ -144,8 +148,12 @@ public class BigQuerySinkTest {
             bigQueryTableName,
             true,
             DeliveryGuarantee.EXACTLY_ONCE,
+            1000L,
+            100 * 1024 * 1024,
+            10,
+            10,
             CREDENTIALS);
-    var table = BigQuerySink.ensureTableExists(bqColumnNames, bqColumnTypes, options);
+    var table = BigQueryDynamicTableSink.ensureTableExists(bqColumnNames, bqColumnTypes, options);
     List<Column> columns = new ArrayList<>();
     StringBuilder sb = new StringBuilder();
     for (int i = 0; i < flinkColumnNames.length; i++) {
@@ -297,8 +305,12 @@ public class BigQuerySinkTest {
             bigQueryTableName,
             true,
             DeliveryGuarantee.EXACTLY_ONCE,
+            1000L,
+            100 * 1024 * 1024,
+            10,
+            10,
             CREDENTIALS);
-    var table = BigQuerySink.ensureTableExists(bqColumnNames, bqColumnTypes, options);
+    var table = BigQueryDynamicTableSink.ensureTableExists(bqColumnNames, bqColumnTypes, options);
     List<Column> columns = new ArrayList<>();
     StringBuilder sb = new StringBuilder();
     for (int i = 0; i < flinkColumnNames.length; i++) {

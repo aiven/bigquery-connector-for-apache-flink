@@ -3,18 +3,15 @@ package io.aiven.flink.connectors.bigquery.sink;
 import static io.aiven.flink.connectors.bigquery.sink.BigQueryConfigOptions.CREATE_TABLE_IF_NOT_PRESENT;
 import static io.aiven.flink.connectors.bigquery.sink.BigQueryConfigOptions.DATASET;
 import static io.aiven.flink.connectors.bigquery.sink.BigQueryConfigOptions.DELIVERY_GUARANTEE;
+import static io.aiven.flink.connectors.bigquery.sink.BigQueryConfigOptions.MAX_OUTSTANDING_ELEMENTS_COUNT;
+import static io.aiven.flink.connectors.bigquery.sink.BigQueryConfigOptions.MAX_OUTSTANDING_REQUEST_BYTES;
 import static io.aiven.flink.connectors.bigquery.sink.BigQueryConfigOptions.PROJECT_ID;
 import static io.aiven.flink.connectors.bigquery.sink.BigQueryConfigOptions.SERVICE_ACCOUNT;
 import static io.aiven.flink.connectors.bigquery.sink.BigQueryConfigOptions.TABLE;
 
-import com.google.auth.Credentials;
-import com.google.auth.oauth2.ServiceAccountCredentials;
-import java.io.FileInputStream;
-import java.io.IOException;
 import java.util.Collections;
 import java.util.Set;
 import org.apache.flink.configuration.ConfigOption;
-import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.table.connector.sink.DynamicTableSink;
 import org.apache.flink.table.factories.DynamicTableSinkFactory;
 import org.apache.flink.table.factories.FactoryUtil;
@@ -27,28 +24,18 @@ public class BigQueryTableSinkFactory implements DynamicTableSinkFactory {
           DATASET,
           TABLE,
           CREATE_TABLE_IF_NOT_PRESENT,
-          DELIVERY_GUARANTEE);
+          DELIVERY_GUARANTEE,
+          MAX_OUTSTANDING_ELEMENTS_COUNT,
+          MAX_OUTSTANDING_REQUEST_BYTES);
 
   @Override
   public DynamicTableSink createDynamicTableSink(Context context) {
     FactoryUtil.TableFactoryHelper helper = FactoryUtil.createTableFactoryHelper(this, context);
     helper.validate();
-    Credentials credentials;
-    ReadableConfig config = helper.getOptions();
-    try (FileInputStream fis = new FileInputStream(config.get(SERVICE_ACCOUNT))) {
-      credentials = ServiceAccountCredentials.fromStream(fis);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+
     BigQueryConnectionOptions options =
-        new BigQueryConnectionOptions(
-            config.get(PROJECT_ID),
-            config.get(DATASET),
-            config.get(TABLE),
-            config.get(CREATE_TABLE_IF_NOT_PRESENT),
-            config.get(DELIVERY_GUARANTEE),
-            credentials);
-    return new BigQuerySink(
+        BigQueryConnectionOptions.fromReadableConfig(helper.getOptions());
+    return new BigQueryDynamicTableSink(
         context.getCatalogTable(),
         context.getCatalogTable().getResolvedSchema(),
         context.getPhysicalRowDataType(),

@@ -1,30 +1,31 @@
 package io.aiven.flink.connectors.bigquery.sink;
 
 import com.google.api.core.ApiFuture;
-import com.google.api.core.ApiFutureCallback;
 import com.google.api.core.ApiFutures;
+import com.google.api.gax.batching.FlowControlSettings;
 import com.google.cloud.bigquery.storage.v1.AppendRowsResponse;
 import com.google.cloud.bigquery.storage.v1.BigQueryWriteClient;
 import com.google.cloud.bigquery.storage.v1.CreateWriteStreamRequest;
-import com.google.cloud.bigquery.storage.v1.Exceptions;
 import com.google.cloud.bigquery.storage.v1.JsonStreamWriter;
 import com.google.cloud.bigquery.storage.v1.WriteStream;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.protobuf.Descriptors;
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Phaser;
 import javax.annotation.Nonnull;
 import org.apache.flink.table.types.logical.LogicalType;
 import org.json.JSONArray;
 
-public class BigQueryStreamingExactlyOnceOutputFormat extends AbstractBigQueryOutputFormat {
+public class BigQueryStreamingExactlyOnceSinkWriter extends BigQueryWriter {
   private long offset = 0L;
 
-  protected BigQueryStreamingExactlyOnceOutputFormat(
+  protected BigQueryStreamingExactlyOnceSinkWriter(
       @Nonnull String[] fieldNames,
       @Nonnull LogicalType[] fieldTypes,
       @Nonnull BigQueryConnectionOptions options) {
     super(fieldNames, fieldTypes, options);
+    inflightRequestCount = new Phaser(1);
   }
 
   @Override
@@ -43,8 +44,14 @@ public class BigQueryStreamingExactlyOnceOutputFormat extends AbstractBigQueryOu
     // Use the JSON stream writer to send records in JSON format.
     // For more information about JsonStreamWriter, see:
     // https://googleapis.dev/java/google-cloud-bigquerystorage/latest/com/google/cloud/bigquery/storage/v1/JsonStreamWriter.html
-    return JsonStreamWriter.newBuilder(writeStream.getName(), writeStream.getTableSchema(), client)
-        .build();
+    JsonStreamWriter.Builder builder =
+        JsonStreamWriter.newBuilder(writeStream.getName(), writeStream.getTableSchema(), client)
+            .setFlowControlSettings(
+                FlowControlSettings.newBuilder()
+                    .setMaxOutstandingElementCount(options.getMaxOutstandingElementsCount())
+                    .setMaxOutstandingRequestBytes(options.getMaxOutstandingRequestBytes())
+                    .build());
+    return builder.build();
   }
 
   @Override
@@ -65,39 +72,10 @@ public class BigQueryStreamingExactlyOnceOutputFormat extends AbstractBigQueryOu
     // Append asynchronously for increased throughput.
     ApiFuture<AppendRowsResponse> future = streamWriter.append(data, offset);
     ApiFutures.addCallback(
-        future, new AppendCompleteCallback(this), MoreExecutors.directExecutor());
+        future,
+        new AppendCompleteCallback(this, new AppendContext(data)),
+        MoreExecutors.directExecutor());
     // Increase the count of in-flight requests.
     inflightRequestCount.register();
-  }
-
-  static class AppendCompleteCallback implements ApiFutureCallback<AppendRowsResponse> {
-
-    private final BigQueryStreamingExactlyOnceOutputFormat parent;
-
-    public AppendCompleteCallback(BigQueryStreamingExactlyOnceOutputFormat parent) {
-      this.parent = parent;
-    }
-
-    @Override
-    public void onSuccess(AppendRowsResponse response) {
-      done();
-    }
-
-    @Override
-    public void onFailure(Throwable throwable) {
-      synchronized (this.parent.lock) {
-        if (this.parent.error == null) {
-          Exceptions.StorageException storageException = Exceptions.toStorageException(throwable);
-          this.parent.error =
-              (storageException != null) ? storageException : new RuntimeException(throwable);
-        }
-      }
-      done();
-    }
-
-    private void done() {
-      // Reduce the count of in-flight requests.
-      this.parent.inflightRequestCount.arriveAndDeregister();
-    }
   }
 }
