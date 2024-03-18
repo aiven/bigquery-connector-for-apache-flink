@@ -57,6 +57,7 @@ public class BigQueryDynamicTableSink implements DynamicTableSink {
     DATATYPE_2_BIGQUERY_TYPE.put(LogicalTypeRoot.BOOLEAN, StandardSQLTypeName.BOOL);
     DATATYPE_2_BIGQUERY_TYPE.put(LogicalTypeRoot.DECIMAL, StandardSQLTypeName.NUMERIC);
     DATATYPE_2_BIGQUERY_TYPE.put(LogicalTypeRoot.ROW, StandardSQLTypeName.STRUCT);
+    DATATYPE_2_BIGQUERY_TYPE.put(LogicalTypeRoot.CHAR, StandardSQLTypeName.GEOGRAPHY);
   }
 
   private static final Set<LogicalTypeRoot> TYPES_WITH_PRECISION =
