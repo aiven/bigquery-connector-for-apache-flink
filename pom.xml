@@ -10,7 +10,7 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <assertj.core.version>3.24.2</assertj.core.version>
+        <assertj.core.version>3.27.7</assertj.core.version>
         <error_prone_core.version>2.20.0</error_prone_core.version>
         <flink.version>1.16.2</flink.version>
         <google-cloud-libraries.version>26.22.0</google-cloud-libraries.version>
